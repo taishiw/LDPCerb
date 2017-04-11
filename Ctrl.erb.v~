@@ -35,7 +35,7 @@ module ctrl(/*AUTOARG*/
    reg [<%=WIDTH-1%>:0] r_alpha [<%=ROW_WEIGHT*COL_NUMBER-1 %>:0];
    reg [<%=WIDTH-1%>:0] r_beta [<%=ROW_WEIGHT*COL_NUMBER-1 %>:0];
    wire [<%=WIDTH-1%>:0] w_lambda [<%=ROW_NUMBER-1%>:0];
-   reg [6:0]		   r_counter;
+   reg [10:0]		   r_counter;
    reg [2:0] 		   i_init_row;
    reg [2:0] 		   i_init_column; 		   
    
@@ -75,7 +75,7 @@ module ctrl(/*AUTOARG*/
      begin
 	if(!xrst)
 	  r_state <= zStateInit;
-	else if(w_trans_row | ((r_state==zStateColumn) & (r_counter == <%=ColumnMAX+2%>) & w_o_val_column))
+	else if(w_trans_row | ((r_state==zStateColumn) & (r_counter == <%=COL_WEIGHT*COL_WEIGHT*ROW_NUMBER+2%>) & w_o_val_column))
 	  r_state <= zStateRow;
 	else if(w_trans_column)
 	  r_state <= zStateColumn;
@@ -133,14 +133,14 @@ module ctrl(/*AUTOARG*/
 	  r_counter <= 0;
 	else if (r_state == zStateRow & w_o_val_row)
 	  begin
-	     if (r_counter == <%=RowMAX+2%>)
+	     if (r_counter == <%=(ROW_WEIGHT-1)*ROW_WEIGHT*COL_NUMBER+2%>)
 	       r_counter <= 0;
 	     else
 	       r_counter <= r_counter + 1;
 	  end
 	else if (r_state == zStateColumn & w_o_val_column)
 	  begin
-	     if (r_counter == <%=ColumnMAX+2%>)
+	     if (r_counter == <%=COL_WEIGHT*COL_WEIGHT*ROW_NUMBER+2%>)
 	       r_counter <=0;
 	     else
 	       r_counter <= r_counter + 1;

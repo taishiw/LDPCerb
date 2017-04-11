@@ -17,8 +17,8 @@ module test_test();
    wire [<%=WIDTH*ROW_NUMBER-1%>:0] 	 i_data; 
    wire [6:0] 		 roop;
    parameter zClk = 20;            //clock time
-   integer 		 mcd;
-   parameter roop_max=10;
+   integer 		 mcd;	 
+   parameter roop_max=1;
    //clock reversal
    always #(zClk/2) clk <= ~clk;
    /*<%0.upto(ROW_NUMBER-1) do |i| %>*/
@@ -39,6 +39,7 @@ module test_test();
 	      .o_val(o_val),
 	      .clk(clk),
 	      .xrst(xrst)
+	      .roop(roop)
 	      );
 
    
