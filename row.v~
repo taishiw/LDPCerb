@@ -1,0 +1,62 @@
+
+module row(i_data,i_val,o_data,o_val,clk,xrst,i_init);
+   parameter WIDTH=32;
+   parameter ROW_NUMBER=6;
+   parameter ROW_WEIGHT=3;
+
+   input  [WIDTH-1:0] i_data;
+   input  i_val;
+   output [WIDTH-1:0] o_data;
+   output reg o_val;
+   input  clk;
+   input  xrst;  
+   input [2:0] i_init; 
+   reg signed [WIDTH-1:0] r_min;
+   reg 			  r_exor;
+   assign o_data=(!r_exor)?r_min:(-r_min+1);
+
+    always@(posedge clk or negedge xrst)begin
+      if(!xrst)
+	o_val <= 0;
+      else if (i_val)
+	o_val <= 1;
+      else
+	o_val <= o_val;
+    end
+	
+   //排他的論理和
+   always@(posedge clk or negedge xrst)begin
+      if(!xrst)
+	r_exor <= 0;
+      else if(i_val)
+	begin
+	   if(i_init == ROW_WEIGHT-2)
+	     r_exor<=i_data[31];
+	   else 
+	     r_exor<=r_exor^i_data[31];
+	end
+      else
+	r_exor <= r_exor;
+   end // always@ (posedge clk or negedge xrst)
+   
+   //最小値
+   always@(posedge clk)begin
+      if(!xrst)
+	r_min <= 32'h11111111;
+      else if (i_val)
+	begin
+	   if(i_init == ROW_WEIGHT-2)
+	     r_min <= funcabs(i_data);
+	   else
+	     r_min <= (funcabs(i_data)< r_min)?funcabs(i_data):r_min;
+	end
+      else
+	r_min <= r_min;
+   end
+   
+   function [WIDTH-1:0] funcabs;
+      input [WIDTH-1:0] i_data;
+      funcabs=(!i_data[WIDTH-1])? i_data:(-i_data+1);
+   endfunction   
+   
+endmodule // row

@@ -1,0 +1,44 @@
+/* <%
+ RowMAX=23
+ ColumnMAX=23
+ ROW_NUMBER=6;
+ COL_NUMBER=4;
+ ROW_WEIGHT=3;
+ COL_WEIGHT=2;
+ WIDTH=32;
+ %>*/
+module add(i_data,i_val,o_data,o_val,clk,xrst,i_init);  
+   input signed [<%=WIDTH%>-1:0] i_data;
+   input 		    i_val;
+   output reg signed [<%=WIDTH-1%>:0] o_data;
+   output reg	       o_val;
+   input 	       clk;
+   input 	       xrst;
+   input [2:0] 	       i_init;
+   
+   always@(posedge clk) begin
+	 if(!xrst)
+	   o_data<=0;
+	 else if (i_val)
+	   begin
+	      if(i_init == <%=COL_WEIGHT-1%>)
+		o_data <= i_data;
+	      else
+		o_data <= o_data + i_data;
+	   end
+	 else
+	   o_data <= o_data;
+   end
+
+    always@(posedge clk) begin
+	 if(!xrst)
+	   o_val <= 0;
+	 else if (i_val)
+	   o_val <= 1;
+	 else
+	   o_val <= o_val;
+    end
+	   
+  
+  
+endmodule

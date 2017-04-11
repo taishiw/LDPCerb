@@ -1,0 +1,68 @@
+/* <%
+ RowMAX=23
+ ColumnMAX=23
+ ROW_NUMBER=6;
+ COL_NUMBER=4;
+ ROW_WEIGHT=3;
+ COL_WEIGHT=2;
+ WIDTH=32;
+ 
+ %>*/
+<%= 1 + 1 %>
+module row(i_data,i_val,o_data,o_val,clk,xrst,i_init);
+   input  [<%=WIDTH-1%>:0] i_data;
+   input  i_val;
+   output [<%=WIDTH-1%>:0] o_data;
+   output reg o_val;
+   input  clk;
+   input  xrst;  
+   input [2:0] i_init; 
+   reg signed [<%=WIDTH-1%>:0] r_min;
+   reg 			  r_exor;
+   assign o_data=(!r_exor)?r_min:(-r_min+1);
+
+    always@(posedge clk or negedge xrst)begin
+      if(!xrst)
+	o_val <= 0;
+      else if (i_val)
+	o_val <= 1;
+      else
+	o_val <= o_val;
+    end
+	
+   //排他的論理和
+   always@(posedge clk or negedge xrst)begin
+      if(!xrst)
+	r_exor <= 0;
+      else if(i_val)
+	begin
+	   if(i_init == <%=ROW_WEIGHT-2%>)
+	     r_exor<=i_data[<%=WIDTH-1%>];
+	   else 
+	     r_exor<=r_exor^i_data[<%=WIDTH-1%>];
+	end
+      else
+	r_exor <= r_exor;
+   end // always@ (posedge clk or negedge xrst)
+   
+   //最小値
+   always@(posedge clk)begin
+      if(!xrst)
+	r_min <= <%=WIDTH%>'b<%0.upto(WIDTH-1) do |i| %>1<%end%>;
+      else if (i_val)
+	begin
+	   if(i_init == <%=ROW_WEIGHT-2%>)
+	     r_min <= funcabs(i_data);
+	   else
+	     r_min <= (funcabs(i_data)< r_min)?funcabs(i_data):r_min;
+	end
+      else
+	r_min <= r_min;
+   end
+   
+   function [<%=WIDTH-1%>:0] funcabs;
+      input [<%=WIDTH-1%>:0] i_data;
+      funcabs=(!i_data[<%=WIDTH-1%>])? i_data:(-i_data+1);
+   endfunction   
+   
+endmodule // row

@@ -1,0 +1,79 @@
+/* <%
+ ROW_NUMBER=12;
+ COL_NUMBER=8;
+ ROW_WEIGHT=6;
+ COL_WEIGHT=4;
+ WIDTH=32;
+ %>*/
+
+module test_test();
+   reg signed[<%=WIDTH-1%>:0] mem[0:<%=ROW_NUMBER-1%>];      //lambda data 
+   wire 		 o_val;         //control signal
+   reg 			 i_val;
+   reg 			 clk;           //System clock 
+   reg 			 xrst;          //reset signal 		    
+   wire [<%=ROW_NUMBER-1%>:0] 	 o_data;
+   integer 		 i;
+   wire [<%=WIDTH*ROW_NUMBER-1%>:0] 	 i_data; 
+   wire [6:0] 		 roop;
+   parameter zClk = 20;            //clock time
+   integer 		 mcd;
+   parameter roop_max=10;
+   //clock reversal
+   always #(zClk/2) clk <= ~clk;
+   /*<%0.upto(ROW_NUMBER-1) do |i| %>*/
+   assign i_data[<%=WIDTH*i+31%>:<%=WIDTH*i%>]=mem[<%=i%>];
+   /*<%end%>*/
+   
+   
+   initial begin
+      $readmemb("input.txt",mem,0,<%=ROW_NUMBER-1%>);//input file data
+      //$readmemb("array.txt",mem2,0,5);//input file data           
+      initialize();
+      t_reset();
+   end
+   ctrl  ctrl(
+	      .i_data(i_data[<%=WIDTH*ROW_NUMBER-1%>:0]),
+	      .i_val(i_val),
+	      .o_data(o_data[<%=ROW_NUMBER-1%>:0]),
+	      .o_val(o_val),
+	      .clk(clk),
+	      .xrst(xrst)
+	      );
+
+   
+	     // .check(check)
+	     //.o_data(o_data[5:0]),
+	     //.o_val(o_val)
+     always@(posedge clk) begin 
+	if(o_val==1 || roop==roop_max)
+	  begin
+	     mcd=$fopen("outputbeta.txt","w");
+	     @(posedge clk);
+	     $fdisplay(mcd,"%b",o_data);
+	     @(posedge clk);
+	     $stop;
+	  end		 
+     end // always@ (posedge clk)*/
+
+    task t_reset();
+      begin
+	 @(posedge clk);
+	 xrst <= 'd0;
+	 @(posedge clk);
+	 xrst <= 'd1;
+      end
+   endtask // t_reset
+
+   task initialize();
+      begin
+	 clk<=1;
+	 i_val <= 1;
+      end
+   endtask // initialize
+   
+endmodule // test_test
+
+
+  
+   
