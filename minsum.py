@@ -447,8 +447,8 @@ def Decoding_logBP(H,y,SNR,max_iter):
     for k in range(n):
         f.write(str(Lc[k])+'\n')
     Lq=np.zeros(shape=(m,n))
-    beta=np.zeros(shape=(d_c*m,1))
-    alpha=np.zeros(shape=(d_v*n,1))
+    beta=[]
+    alpha=[]
     print(alpha)
     Lr = np.zeros(shape=(m,n))
     L = np.zeros(shape=(m,n))
@@ -501,15 +501,10 @@ def Decoding_logBP(H,y,SNR,max_iter):
                 if count==1:
                    #print(Ni)
                    Lr[i,j] = pos(prod(Lc[Nij]))*min(abs(Lc[Nij]))
-                   alpha[l]=Lr[i,j]
-                   print(l)
-                   
-                   l=l+1
+                   alpha.append(Lr[i,j])
                 else: 
                     Lr[i,j] = pos(prod(Lq[i,Nij]))*min(abs(Lq[i,Nij]))
-                    alpha[l]=Lr[i,j]
-                    
-                    l=l+1
+                alpha.append(Lr[i,j])
         print(list)
         print(m)
         print(d_c)
@@ -534,11 +529,10 @@ def Decoding_logBP(H,y,SNR,max_iter):
                         list2.extend(L[Mji,j]-1)
                         list2.extend(str(j))
                         Lq[i,j] = Lc[j]+sum(Lr[Mji,j])
-                        beta[p]=Lq[i,j]
-                        p=p+1
+                        beta.append(Lq[i,j])
         print (list2)
-
         #print(list2)
+        print(alpha)
         for k in range(0,(d_v)*(d_v)*n):
             numbercolumn.write(str(list2[k])+'\n')
  
@@ -557,11 +551,11 @@ def Decoding_logBP(H,y,SNR,max_iter):
         
             
         product = InCode(H,x)
-        if product or count >= max_iter:  
+        if product or count >= max_iter:
             break
-    for k in range(len(alpha)):
-        g.write(str(alpha[k]).rstrip('\r\n')+' ')
-        h.write(str(beta[k]).rstrip('\r\n')+' ')
+    for k in range(d_v*n):
+        g.write(str(alpha[k])+'\n')
+        h.write(str(beta[k])+'\n')
     return x
 
 def GaussElimination(MATRIX,B):

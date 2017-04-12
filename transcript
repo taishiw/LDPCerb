@@ -9,21 +9,11 @@
 # //
 # vsim test_test 
 # ** Note: (vsim-3813) Design is being optimized due to module recompilation...
-# ** Warning: [8] test_test.v(3): (vopt-2605) empty port name in port list.
+# ** Note: (vopt-143) Recognized 1 FSM in module "ctrl(fast)".
 # Loading work.test_test(fast)
 # Loading work.ctrl(fast)
 # Loading work.row(fast)
 # Loading work.add(fast)
 add wave sim:/test_test/*
 run -all
-# Break in Module test_test at test_test.v line 72
-add wave -position end sim:/test_test/ctrl/*
-add wave -position end  sim:/test_test/ctrl/r_beta
-add wave -position end  sim:/test_test/ctrl/r_alpha
-restart
-# Loading work.test_test(fast)
-# Loading work.ctrl(fast)
-# Loading work.row(fast)
-# Loading work.add(fast)
-run -all
-# Break in Module test_test at test_test.v line 72
+# Break in Module test_test at test_test.v line 276

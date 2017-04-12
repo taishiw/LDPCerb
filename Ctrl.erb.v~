@@ -20,7 +20,7 @@ module ctrl(/*AUTOARG*/
 	    //Inputs
 	    i_data,i_val,
 	    //Outputs
-	    o_data,o_val,clk,xrst
+	    o_data,o_val,clk,xrst,roop
 	    );
    input [<%=WIDTH*ROW_NUMBER-1 %>:0] i_data;
    input 	     i_val;
@@ -28,6 +28,7 @@ module ctrl(/*AUTOARG*/
    output 		   o_val;
    input 		   clk;
    input 		   xrst;
+   output reg [6:0] 	   roop;
    parameter zStateInit=0;
    parameter zStateRow=1;
    parameter zStateColumn=2;
@@ -169,6 +170,15 @@ module ctrl(/*AUTOARG*/
 	  i_init_column <=0;
 	else
 	  i_init_column <= i_init_column+1;
+     end
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  roop <= 0;
+	else if (w_trans_column)
+	  roop <=roop+1;
+	else
+	  roop <= roop;
      end
 
    row row(
