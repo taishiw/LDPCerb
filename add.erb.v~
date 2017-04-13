@@ -18,7 +18,7 @@ module add(i_data,i_val,o_data,o_val,clk,xrst,i_init);
 	   o_data<=0;
 	 else if (i_val)
 	   begin
-	      if(i_init == <%=COL_WEIGHT-1%>)
+	      if(i_init == <%=COL_WEIGHT%>)
 		o_data <= i_data;
 	      else
 		o_data <= o_data + i_data;

@@ -1,0 +1,16 @@
+/* <%
+ ROW_NUMBER= ENV['ROW_NUMBER'].to_i;
+ COL_NUMBER= ENV['COL_NUMBER'].to_i;
+ ROW_WEIGHT= ENV['ROW_WEIGHT'].to_i;
+ COL_WEIGHT= ENV['COL_WEIGHT'].to_i;
+ WIDTH = ENV['WIDTH'].to_i; 
+ %>*/
+
+module parity(/*AUTOARG*/
+	    //Inputs
+	    i_data,i_val,
+	    //Outputs
+	    o_data,o_val,clk,xrst,w_alpha,w_beta,roop
+	    );
+  
+   

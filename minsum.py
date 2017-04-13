@@ -3,6 +3,7 @@ import math
 from scipy import sparse 
 from scipy.sparse import csr_matrix
 #import cv2
+import os
 from time import time
 #from IPython.display import display, HTML
 import scipy
@@ -14,6 +15,7 @@ p=open('y.txt','w')
 numberrow=open('arrayrow.txt','w')
 numbercolumn=open('arraycolumn.txt','w')
 numberlambda=open('arraylambda.txt','w')
+numberparity=open('arrayparity.txt','w')
 def RegularH(n,d_v,d_c):
 
     if  n%d_c:
@@ -455,6 +457,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
     list=[]
     list2=[]
     list3=[]
+    list4=[]
     #print(alpha)
     #print(L)
     t=1
@@ -463,9 +466,10 @@ def Decoding_logBP(H,y,SNR,max_iter):
             #print(i,j)
             if H[i][j]==1:
                 L[i][j]=int(t)
-                #print(j)
-                list3.extend(str(j))
+                print(j)
+                list3.append(str(j))
                 t=t+1
+    print("list3=",list3)
     for k in range(0,m*(d_c)):
                     numberlambda.write(str(list3[k])+'\n')
         
@@ -496,21 +500,17 @@ def Decoding_logBP(H,y,SNR,max_iter):
                 #print(list)
                 list.extend(L[i,Nij]-1)
                 #print(list)
-                
-            
                 if count==1:
-                   #print(Ni)
-                   Lr[i,j] = pos(prod(Lc[Nij]))*min(abs(Lc[Nij]))
-                   alpha.append(Lr[i,j])
+                    #print(Nij)
+                    #print("i",i)
+                    Lr[i,j] = pos(prod(Lc[Nij]))*min(abs(Lc[Nij]))
+                    #print(Lr)
+                    alpha.append(Lr[i,j])
+                    #print(alpha)
                 else: 
                     Lr[i,j] = pos(prod(Lq[i,Nij]))*min(abs(Lq[i,Nij]))
-                alpha.append(Lr[i,j])
-        print(list)
-        print(m)
-        print(d_c)
-        print(d_v)
-        print(n)
-        print(L)
+                    alpha.append(Lr[i,j])
+                    #print(alpha)
         for k in range(0,m*(d_c-1)*(d_c)):
                     numberrow.write(str(list[k])+'\n')
         #### ETAPE 2 : Verticale
@@ -525,16 +525,26 @@ def Decoding_logBP(H,y,SNR,max_iter):
                         #print("Mji=",Mji)
                         if i in Mji: Mji.remove(i)
                         #print("Mjinew=",Mji)
-                        print("L=",L[Mji,j]-1)
+                        #print("L=",L[Mji,j]-1)
                         list2.extend(L[Mji,j]-1)
-                        list2.extend(str(j))
+                        list2.append(str(j))
                         Lq[i,j] = Lc[j]+sum(Lr[Mji,j])
                         beta.append(Lq[i,j])
-        print (list2)
-        #print(list2)
-        print(alpha)
         for k in range(0,(d_v)*(d_v)*n):
             numbercolumn.write(str(list2[k])+'\n')
+
+        for i in range(m):
+            for j in range(n):
+                Mj = Nodes[j]
+                #print(Mj)
+                #print("i=",i)
+                #print("Mji=",Mji)
+                #print("Mjinew=",Mji)
+                #print("L=",L[Mji,j]-1)
+                list4.extend(L[Mj,j]-1)
+                list4.append(str(j))
+        for k in range(0,(d_c)*n):
+             numberparity.write(str(list4[k])+'\n')
  
         #### LLR a posterior
         
@@ -613,25 +623,19 @@ def DecodedMessage(tG,x):
     return message
 
 
-n = 12  # Number of columns
-d_v = 4 # Number of ones per column, must be lower than d_c (because H must have more rows than columns)
-d_c = 6 # Number of ones per row, must divide n (because if H has m rows: m*d_c = n*d_v (compute number of ones in H))
+n = int(os.getenv('ROW_NUMBER'))# Number of columns
+d_v = int(os.getenv('COL_WEIGHT')) # Number of ones per column, must be lower than d_c (because H must have more rows than columns)
+d_c = int(os.getenv('ROW_WEIGHT')) # Number of ones per row, must divide n (because if H has m rows: m*d_c = n*d_v (compute number of ones in H))
 
 H = RegularH(n,d_v,d_c)
-#H=np.array([[1,1,1,0,0,0],
- #           [0,0,0,1,1,1],
-  #          [1,1,0,0,1,0],
-   #         [0,0,1,1,0,1]])
-
-
-#print("Regular parity-check matrix H({},{},{}):\n\n".format(n,d_v,d_c),H)
+print("Regular parity-check matrix H({},{},{}):\n\n".format(n,d_v,d_c),H)
 tG = CodingMatrix(H)
 #print("Transposed Coding Matrix tG that goes with H above is:\n\n",tG)
 #print("\n With G,H you can code messages of {} bits into codewords of {} bits because G's shape is {}\n".format(tG.shape[1],tG.shape[0],tG.T.shape))
 #new_H,sys_tG = CodingMatrix_systematic(H) #If i'm willing to use only systematic form, I prefer to overwrite
                                                 # H and simply compute:
 H,tG = CodingMatrix_systematic(H)
-#print("The new H is:\n\n",new_H)
+print("The new H is:\n\n",H)
 #print("\nSystematic tG is:\n\n",sys_tG)
 
 ### if you want to check if H.tG = 0:
@@ -651,10 +655,6 @@ k,n
 #v_received = DecodedMessage(tG,x_decoded)
 #print("The k-bits decoded message v_recieved is:\n",v_received)
 #print("\nThe k-bits original message v is:\n",v)
-#H=np.array([[1,1,1,0,0,0],
-#            [0,0,0,1,1,1],
- #           [1,1,0,0,1,0],
-  #          [0,0,1,1,0,1]])
 tG = CodingMatrix(H)
 #print(tG)
 sample_size = 1
@@ -667,7 +667,7 @@ matches=[]
 t = time()
 for i in range(sample_size): 
     v_sent = np.random.randint(2,size=k)
-    print(v_sent)
+    #print(v_sent)
     for k in range(len(v_sent)):
         o.write(str(v_sent[k])+'\n')
     y = Coding(tG,v_sent,snr)
