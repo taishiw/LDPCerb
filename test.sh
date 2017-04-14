@@ -4,6 +4,7 @@ export COL_NUMBER=4
 export ROW_WEIGHT=3
 export COL_WEIGHT=2
 export WIDTH=32
+export LOOP_MAX=1
 snr=0
 echo $snr > snr.txt
 python3 minsum.py <snr.txt

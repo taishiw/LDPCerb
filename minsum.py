@@ -12,48 +12,53 @@ g=open('outputsoftalpha.txt','w')
 h=open('outputsoftbeta.txt','w')
 o=open('v_sent.txt','w')
 p=open('y.txt','w')
-numberrow=open('arrayrow.txt','w')
-numbercolumn=open('arraycolumn.txt','w')
-numberlambda=open('arraylambda.txt','w')
-numberparity=open('arrayparity.txt','w')
-def RegularH(n,d_v,d_c):
+numberrow=open('arrayrow.txt','w')#行処理の処理順番ファイル
+numbercolumn=open('arraycolumn.txt','w')#列処理の処理順番ファイル
+numberlambda=open('arraylambda.txt','w')#λの処理順番ファイル
+numberestimate=open('arrayestimate.txt','w')#推定語の処理順番ファイル
+def RegularH(n,row_weight,column_weight):
+    '''検査行列の生成'''
 
-    if  n%d_c:
-        raise ValueError('d_c must divide n. Help(RegularH) for more info.')
+    if  n%column_weight:
+        raise ValueError('列数が行重みで割り切れない')
 
-    if d_c <= d_v: 
-        raise ValueError('d_c must be greater than d_v. Help(RegularH) for more info.')
+    if column_weight <= row_weight: 
+        raise ValueError('行重みが列重みより小さい')
 
-    m = (n*d_v)// d_c
-    a=m//d_v
-    Set=np.zeros((a,n),dtype=int)  
+    m = (n*row_weight)// column_weight #行数を求める
+    a=m//row_weight#1行の中で1が立つ割合を求める
+    Set=np.zeros((a,n),dtype=int)#a行n列の0を作る
+    print("set",Set)
     
-
-    # Filling the first set with consecutive ones in each row of the set 
+    #セットの各行のに連続した1を入れる
 
     for i in range(a):     
-        for j in range(i*d_c,(i+1)*d_c): 
+        for j in range(i*column_weight,(i+1)*column_weight): 
             Set[i,j]=1
+    print("set",Set)
 
-    #Create list of Sets and append the first reference set
+    #セットのリストをつくる
     Sets=[]
     Sets.append(Set.tolist())
+    print("set",Sets)
+    
 
-    #Create remaining sets by permutations of the first set's columns: 
+    #最初のセットの列を並び替えることによって残りのセットを作る: 
     i=1
-    for i in range(1,d_v):
+    for i in range(1,row_weight):
         newSet = np.transpose(np.random.permutation(np.transpose(Set))).tolist()
         Sets.append(newSet)
-
-    #Returns concatenated list of sest:
+    print("set",Sets)
+    #つなげたリストを返す:
     H = np.concatenate(Sets)
     return H
 
-def BinaryProduct(X,Y):
-        
-    """ Binary Matrices or Matrix-vector product in Z/2Z. Works with scipy.sparse.csr_matrix matrices X,Y too."""
+def BinaryProduct(X,Y):        
+    """Z/2Zのバイナリ行列または行列ベクトル積の計算．
+    　　および疎行列X,Yの計算    
+    """
  
-    A = X.dot(Y)
+    A = X.dot(Y)#XとYのバイナリ積
     
     if type(A)!=scipy.sparse.csr_matrix:
         return A%2
@@ -62,29 +67,25 @@ def BinaryProduct(X,Y):
 def GaussJordan(MATRIX,change=0):
 
     """ 
-    Description:
-
-    Performs the row reduced echelon form of MATRIX and returns it.
-
-    If change = 1, all changes in the MATRIX's rows are applied to identity matrix P: 
-
-    Let A be our parameter MATRIX. refA the reduced echelon form of A. P is the square invertible matrix:
-
+    縮小されたエシェロン行列を使い，返す
+    change=1の場合，行列の行の変更がすべて単位行列Pに適用される 
+    Aをパラメーター行列として，Aの縮小されたエシェロン形式をrefAとする．
+    Pは正方正則行列である．
     P.A = Aref.
 
     -------------------------------------------------
-    Parameters: 
+    パラメーター
 
-    MATRIX: 2D-Array. 
-    change : boolean (default = 0)
+    行列:2次元行列. 
+    change : ブール (デフォルト = 0)
 
     ------------------------------------------------
 
-    change = 0  (default)
-     >>> Returns 2D-Array Row Reduced Echelon form of Matrix
+    change = 0  (デフォルト)
+     >>> 2次元配列の行を返すエシェロン形式の行列を減らす
 
     change = 1 
-    >>> Returns Tuple of 2D-arrays (refMATRIX, P) where P is described above.
+    >>> >>> 2次元配列（refMATRIX、P）のタプルを返します。ここで、Pは上で説明したとおりです。.
 
     """
 
@@ -470,7 +471,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
                 list3.append(str(j))
                 t=t+1
     print("list3=",list3)
-    for k in range(0,m*(d_c)):
+    for k in range(0,m*(column_weight)):
                     numberlambda.write(str(list3[k])+'\n')
         
     #print(L) 
@@ -511,7 +512,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
                     Lr[i,j] = pos(prod(Lq[i,Nij]))*min(abs(Lq[i,Nij]))
                     alpha.append(Lr[i,j])
                     #print(alpha)
-        for k in range(0,m*(d_c-1)*(d_c)):
+        for k in range(0,m*(column_weight-1)*(column_weight)):
                     numberrow.write(str(list[k])+'\n')
         #### ETAPE 2 : Verticale
         for k in range (1,((m*n)+1)):
@@ -530,7 +531,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
                         list2.append(str(j))
                         Lq[i,j] = Lc[j]+sum(Lr[Mji,j])
                         beta.append(Lq[i,j])
-        for k in range(0,(d_v)*(d_v)*n):
+        for k in range(0,(row_weight)*(row_weight)*n):
             numbercolumn.write(str(list2[k])+'\n')
 
         for i in range(m):
@@ -543,8 +544,8 @@ def Decoding_logBP(H,y,SNR,max_iter):
                 #print("L=",L[Mji,j]-1)
                 list4.extend(L[Mj,j]-1)
                 list4.append(str(j))
-        for k in range(0,(d_c)*n):
-             numberparity.write(str(list4[k])+'\n')
+        for k in range(0,(column_weight)*n):
+             numberestimate.write(str(list4[k])+'\n')
  
         #### LLR a posterior
         
@@ -563,7 +564,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
         product = InCode(H,x)
         if product or count >= max_iter:
             break
-    for k in range(d_v*n):
+    for k in range(row_weight*n):
         g.write(str(alpha[k])+'\n')
         h.write(str(beta[k])+'\n')
     return x
@@ -623,64 +624,41 @@ def DecodedMessage(tG,x):
     return message
 
 
-n = int(os.getenv('ROW_NUMBER'))# Number of columns
-d_v = int(os.getenv('COL_WEIGHT')) # Number of ones per column, must be lower than d_c (because H must have more rows than columns)
-d_c = int(os.getenv('ROW_WEIGHT')) # Number of ones per row, must divide n (because if H has m rows: m*d_c = n*d_v (compute number of ones in H))
+n = int(os.getenv('ROW_NUMBER'))#列数
+row_weight = int(os.getenv('COL_WEIGHT')) #行重み
+column_weight = int(os.getenv('ROW_WEIGHT')) #列重み
 
-H = RegularH(n,d_v,d_c)
-print("Regular parity-check matrix H({},{},{}):\n\n".format(n,d_v,d_c),H)
+H = RegularH(n,row_weight,column_weight)#検査行列を生成
+print("正則検査行列 H({},{},{}):\n\n".format(n,row_weight,column_weight),H)
 tG = CodingMatrix(H)
-#print("Transposed Coding Matrix tG that goes with H above is:\n\n",tG)
-#print("\n With G,H you can code messages of {} bits into codewords of {} bits because G's shape is {}\n".format(tG.shape[1],tG.shape[0],tG.T.shape))
-#new_H,sys_tG = CodingMatrix_systematic(H) #If i'm willing to use only systematic form, I prefer to overwrite
-                                                # H and simply compute:
+print("Hを元にした転置符号化行列 tG:\n\n",tG)
+print("\n tGによって{}ビットのメッセージを{}ビットに符号化できる\n".format(tG.shape[1],tG.shape[0]))
 H,tG = CodingMatrix_systematic(H)
 print("The new H is:\n\n",H)
-#print("\nSystematic tG is:\n\n",sys_tG)
-
-### if you want to check if H.tG = 0:
-#print("\nBinary Product HxG' \n\n",BinaryProduct(H,tG))
+print(tG)
 n,k = tG.shape
-#snr = 8
-k,n
-#v = np.random.randint(2,size=k)
-#print (k)
-#print("The k-bits message v: \n",v)
-#y = Coding(tG,v,snr)
-#print (y)
-#print("The n-bits message received after transmission:\n\n",y)
-#x_decoded = Decoding_logBP(H,y,snr,5)
-#print("The decoded n-bits codeword is:\n",x_decoded)
-#print("H.x' = ",BinaryProduct(H,x_decoded))
-#v_received = DecodedMessage(tG,x_decoded)
-#print("The k-bits decoded message v_recieved is:\n",v_received)
-#print("\nThe k-bits original message v is:\n",v)
-tG = CodingMatrix(H)
-#print(tG)
-sample_size = 1
-input_snr=input(' ')
+sample_size = 1#サンプルサイズ
+input_snr=input(' ')#snr
 snrint=int(input_snr)
 snr=snrint*0.1
-#print(snr)
-max_iter = 1
+max_iter = int(os.getenv('LOOP_MAX'))#最大繰り返し回数
 matches=[]
 t = time()
 for i in range(sample_size): 
-    v_sent = np.random.randint(2,size=k)
-    #print(v_sent)
-    for k in range(len(v_sent)):
+    v_sent = np.random.randint(2,size=k)#雑音を付加
+    print("送信符号語:",v_sent)
+    for k in range(len(v_sent)):#送信語を書き込み
         o.write(str(v_sent[k])+'\n')
-    y = Coding(tG,v_sent,snr)
-    for k in range(len(y)):
+    y = Coding(tG,v_sent,snr)#符号化
+    for k in range(len(y)):#符号語を書き込み
         p.write(str(y[k])+'\n')
-    #y=np.array([0.66379454, -0.59497408, -2.15299592,  2.84935889,  6.53625405,  2.87575803])
-    
-    x_decoded= Decoding_logBP(H,y,snr,max_iter)
-    v_received = DecodedMessage(tG,x_decoded)
-    #print(v_received)
-    matches.append((v_sent==v_received).all())
+    x_decoded= Decoding_logBP(H,y,snr,max_iter)#min-sum復号法を適用
+    print("min_sum",x_decoded)
+    v_received = DecodedMessage(tG,x_decoded)#送信語を推定
+    print("推定語",v_received)
+    matches.append((v_sent==v_received).all())#リストに正しいか，正しくないかの情報をいれる
 t = time()-t
         #print(matches)
-        #print("Sucessful decoding rate for snr = {} and max_iter = {} is {}%".format(snr,max_iter,sum(matches)*100/sample_size))
+        #print("snr = {} and 最大繰り返し回数 = {} is {}%".format(snr,max_iter,sum(matches)*100/sample_size))
         #print("\nDecoding time of {} messages in seconds:".format(sample_size),t)
 

@@ -1,9 +1,9 @@
 /* <%
- ROW_NUMBER=12;
- COL_NUMBER=8;
- ROW_WEIGHT=6;
- COL_WEIGHT=4;
- WIDTH=32;
+ ROW_NUMBER= ENV['ROW_NUMBER'].to_i;
+ COL_NUMBER= ENV['COL_NUMBER'].to_i;
+ ROW_WEIGHT= ENV['ROW_WEIGHT'].to_i;
+ COL_WEIGHT= ENV['COL_WEIGHT'].to_i;
+ WIDTH = ENV['WIDTH'].to_i; 
  %> */
 module row(i_data,i_val,o_data,o_val,clk,xrst,i_init);
    input  [<%=WIDTH-1%>:0] i_data;
@@ -32,7 +32,7 @@ module row(i_data,i_val,o_data,o_val,clk,xrst,i_init);
 	r_exor <= 0;
       else if(i_val)
 	begin
-	   if(i_init == <%=0%>)
+	   if(i_init == <%=1%>)
 	     r_exor<=i_data[<%=WIDTH-1%>];
 	   else 
 	     r_exor<=r_exor^i_data[<%=WIDTH-1%>];
@@ -47,7 +47,7 @@ module row(i_data,i_val,o_data,o_val,clk,xrst,i_init);
 	r_min <= <%=WIDTH%>'b<%0.upto(WIDTH-1) do |i| %>1<%end%>;
       else if (i_val)
 	begin
-	   if(i_init == 0)
+	   if(i_init == 1)
 	     r_min <= funcabs(i_data);
 	   else
 	     r_min <= (funcabs(i_data)< r_min)?funcabs(i_data):r_min;

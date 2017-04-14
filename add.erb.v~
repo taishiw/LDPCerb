@@ -1,9 +1,9 @@
 /* <%
- ROW_NUMBER=12;
- COL_NUMBER=8;
- ROW_WEIGHT=6;
- COL_WEIGHT=4;
- WIDTH=32;
+ ROW_NUMBER= ENV['ROW_NUMBER'].to_i;
+ COL_NUMBER= ENV['COL_NUMBER'].to_i;
+ ROW_WEIGHT= ENV['ROW_WEIGHT'].to_i;
+ COL_WEIGHT= ENV['COL_WEIGHT'].to_i;
+ WIDTH = ENV['WIDTH'].to_i; 
  %>*/
 module add(i_data,i_val,o_data,o_val,clk,xrst,i_init);  
    input signed [<%=WIDTH%>-1:0] i_data;
@@ -18,7 +18,7 @@ module add(i_data,i_val,o_data,o_val,clk,xrst,i_init);
 	   o_data<=0;
 	 else if (i_val)
 	   begin
-	      if(i_init == <%=COL_WEIGHT%>)
+	      if(i_init == 0)
 		o_data <= i_data;
 	      else
 		o_data <= o_data + i_data;

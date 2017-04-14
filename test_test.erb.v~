@@ -1,9 +1,9 @@
 /* <%
- ROW_NUMBER=12;
- COL_NUMBER=8;
- ROW_WEIGHT=6;
- COL_WEIGHT=4;
- WIDTH=32;
+ ROW_NUMBER= ENV['ROW_NUMBER'].to_i;
+ COL_NUMBER= ENV['COL_NUMBER'].to_i;
+ ROW_WEIGHT= ENV['ROW_WEIGHT'].to_i;
+ COL_WEIGHT= ENV['COL_WEIGHT'].to_i;
+ WIDTH = ENV['WIDTH'].to_i; 
  %>*/
 
 module test_test();
@@ -12,18 +12,28 @@ module test_test();
    reg 			 i_val;
    reg 			 clk;           //System clock 
    reg 			 xrst;          //reset signal 		    
-   wire [<%=ROW_NUMBER-1%>:0] 	 o_data;
-   integer 		 i;
+   wire [<%=ROW_NUMBER-1%>:0] estimate;
    wire [<%=WIDTH*ROW_NUMBER-1%>:0] 	 i_data; 
    wire [6:0] 		 roop;
+   wire [<%=WIDTH*ROW_WEIGHT*COL_NUMBER-1%>:0] w_alpha,w_beta;
+   wire [<%=WIDTH-1%>:0] w_alpha_write [<%=ROW_WEIGHT*COL_NUMBER-1 %>:0];
+   wire [<%=WIDTH-1%>:0] w_beta_write [<%=ROW_WEIGHT*COL_NUMBER-1 %>:0]; 
    parameter zClk = 20;            //clock time
-   integer 		 mcd;	 
-   parameter roop_max=1;
+   integer 		 mcd1,mcd2,mcd3;
+   integer 		 i;	 
+   parameter roop_max=100;
    //clock reversal
    always #(zClk/2) clk <= ~clk;
    /*<%0.upto(ROW_NUMBER-1) do |i| %>*/
    assign i_data[<%=WIDTH*i+31%>:<%=WIDTH*i%>]=mem[<%=i%>];
    /*<%end%>*/
+   /*<%for i in 0...ROW_WEIGHT*COL_NUMBER %>*/
+   assign w_alpha_write[<%=i%>]=w_alpha[<%=WIDTH*i+WIDTH-1%>:<%=WIDTH*i%>];
+   /*<%end%>*/
+    /*<%for i in 0...ROW_WEIGHT*COL_NUMBER %>*/
+   assign w_beta_write[<%=i%>]=w_beta[<%=WIDTH*i+WIDTH-1%>:<%=WIDTH*i%>];
+   /*<%end%>*/
+   
    
    
    initial begin
@@ -35,23 +45,27 @@ module test_test();
    ctrl  ctrl(
 	      .i_data(i_data[<%=WIDTH*ROW_NUMBER-1%>:0]),
 	      .i_val(i_val),
-	      .o_data(o_data[<%=ROW_NUMBER-1%>:0]),
+	      .estimate(estimate[<%=ROW_NUMBER-1%>:0]),
 	      .o_val(o_val),
 	      .clk(clk),
 	      .xrst(xrst),
+	      .o_alpha(w_alpha),
+	      .o_beta(w_beta),
 	      .roop(roop)
 	      );
 
-   
-	     // .check(check)
-	     //.o_data(o_data[5:0]),
-	     //.o_val(o_val)
      always@(posedge clk) begin 
 	if(o_val==1 || roop==roop_max)
 	  begin
-	     mcd=$fopen("outputbeta.txt","w");
+	     mcd1=$fopen("outputalpha.txt","w");
+	     mcd2=$fopen("outputbeta.txt","w");
+	     mcd3=$fopen("estimate.txt","w");
 	     @(posedge clk);
-	     $fdisplay(mcd,"%b",o_data);
+	     for (i=0;i<<%=ROW_WEIGHT*COL_NUMBER%>;i=i+1)begin
+		$fdisplay(mcd1,"%b",w_alpha_write[i]);
+		$fdisplay(mcd2,"%b",w_beta_write[i]);
+	     end
+	     $fdisplay(mcd3,"%b",estimate);
 	     @(posedge clk);
 	     $stop;
 	  end		 
