@@ -1,6 +1,7 @@
 # vsim -do {run -all ; exit } -c test_test 
-# ** Note: (vsim-3813) Design is being optimized due to module recompilation...
+# ** Note: (vsim-3812) Design is being optimized...
 # ** Note: (vopt-143) Recognized 1 FSM in module "ctrl(fast)".
+# ** Warning: [8] test_test.v(3): (vopt-2605) empty port name in port list.
 # //  ModelSim SE-64 10.2c Jul 18 2013 Linux 4.10.9-20170409-diskless-01+
 # //
 # //  Copyright 1991-2013 Mentor Graphics Corporation
@@ -15,6 +16,6 @@
 # Loading work.row(fast)
 # Loading work.add(fast)
 # run -all  
-# Break in Module test_test at test_test.v line 304
-# Stopped at test_test.v line 304 
+# Break in Module test_test at test_test.v line 246
+# Stopped at test_test.v line 246 
 #  exit  
