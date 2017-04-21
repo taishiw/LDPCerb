@@ -19,6 +19,8 @@
  text4=File.read('arrayestimate.txt')
  strs4=text4.split("\n")
  lines4 = strs4.map { |str| str.to_i}
+ Data_order = (1000/WIDTH).to_i 
+ 
   %>*/
 
 module ctrl(/*AUTOARG*/
@@ -27,7 +29,7 @@ module ctrl(/*AUTOARG*/
 	    //Outputs
 	    estimate,o_val,clk,xrst,r_loop
 	    );
-   input [<%=WIDTH*ROW_NUMBER-1 %>:0] i_data;//雑音の付加されたデータ
+   input [<%=(Data_order)*WIDTH-1 %>:0] i_data;//雑音の付加されたデータ
    input 	     i_val;//入力のvalid信号
    output [<%=ROW_NUMBER-1%>:0] estimate;//推定結果
    output 		   o_val;//出力のvalid信号
@@ -36,14 +38,15 @@ module ctrl(/*AUTOARG*/
    output reg [6:0] 	      r_loop;//繰り返し回数レジスタ
    //ステート情報
    parameter zStateInit=0;
-   parameter zStateRow=1;
-   parameter zStateColumn=2;
+   parameter zStateData=1;
+   parameter zStateRow=2;
+   parameter zStateColumn=3;
    
    reg [2:0] r_state;//ステートレジスタ
    
    reg signed [<%=WIDTH-1%>:0]  r_alpha [<%=ROW_WEIGHT*COL_NUMBER-1 %>:0];//αレジスタ
    reg signed [<%=WIDTH-1%>:0] 	r_beta [<%=ROW_NUMBER*COL_WEIGHT-1 %>:0];//βレジスタ
-   wire signed [<%=WIDTH-1%>:0] w_lambda [<%=ROW_NUMBER-1%>:0];//λワイア
+   reg signed [<%=WIDTH-1%>:0] r_lambda [<%=ROW_NUMBER-1%>:0];//λレジスタ
    
    reg [100:0] 			 r_counter;// カウンタ
    
@@ -55,11 +58,14 @@ module ctrl(/*AUTOARG*/
    wire [<%=WIDTH-1%>:0]   w_i_data_row,w_i_data_column;//行処理，列処理それぞれの入力信号
    wire [<%=WIDTH-1%>:0]   w_o_data_column,w_o_data_row;//行処理，列処理の出力信号
    wire 		   w_o_val_row,w_o_val_column;//行処理，列処理の出力のvalid信号
-   wire 		   w_trans_row,w_trans_column;//行処理，列処理の状態遷移
+   wire 		   w_trans_data,w_trans_row,w_trans_column;//行処理，列処理の状態遷移
    wire [<%=WIDTH-1%>:0] 	   w_lambda_beta[<%=ROW_WEIGHT*COL_NUMBER-1%>:0];//βの初期値設定用信号
   
-   //ステートが初期値のときvalid信号をうけたら，行処理にステートを移す
-   assign w_trans_row = (r_state==zStateInit & i_val);
+   //ステートが初期値のときvalid信号をうけたら，データ取り込みにステートを移す
+   assign w_trans_data = (r_state==zStateInit & i_val);
+
+   //ステートがデータ取り込みかつカウンタがすべて取り込んだら行処理にステートを移す
+   assign w_trans_row = (r_state == zStateData) & (r_counter == (<%=(ROW_NUMBER/Data_order+1).to_i%>));
 
    //ステートが行処理かつカウンタが行処理の最後の処理かつ行処理の出力valid信号が１のときステートを列処理に移す
    assign w_trans_column = (r_state == zStateRow) & (r_counter == <%=(ROW_WEIGHT-1)*ROW_WEIGHT*COL_NUMBER+2%>) & w_o_val_row;
@@ -75,21 +81,17 @@ module ctrl(/*AUTOARG*/
    assign w_i_data_column =
 			   /*<%for i in 0...COL_WEIGHT*COL_WEIGHT*ROW_NUMBER%>*/
 			   /*<% if (i+1) % COL_WEIGHT == 0 then %>*/ 
-			   (r_counter == <%=i%> ) ? w_lambda[<%=lines3[i/COL_WEIGHT]%>]:
+			   (r_counter == <%=i%> ) ? r_lambda[<%=lines3[i/COL_WEIGHT]%>]:
 			   /*<%else%>*/
 			   (r_counter == <%=i%> ) ? r_alpha[<%=lines2[i]%>]:
 				       /*<%end%>*/
 				       /*<%end%>*/
 			   0;
 
-   //入力データからλをつくる
-   /*<%0.upto(ROW_NUMBER-1) do |i| %>*/
-   assign w_lambda[<%=i%>]=i_data[<%=WIDTH*i+WIDTH-1%>:<%=WIDTH*i%>];
-   /*<%end%>*/
-
+  
    //βの初期化
    /*<%for i in 0...ROW_WEIGHT*COL_NUMBER%>*/
-   assign w_lambda_beta[<%=i%>]=w_lambda[<%=lines3[i]%>];
+   assign w_lambda_beta[<%=i%>]=r_lambda[<%=lines3[i]%>];
    /*<%end%>*/
 
    /*パリティビットを計算
@@ -118,7 +120,7 @@ module ctrl(/*AUTOARG*/
 		      /*<%for j in 0...COL_WEIGHT%>*/	       
 		      r_alpha[<%=lines4[j+(COL_WEIGHT+1)*i]%>]+
 		      /*<%end%>*/
-		      w_lambda[<%=lines4[i*(COL_WEIGHT+1)+2]%>])>0) ? 0:1;
+		      r_lambda[<%=lines4[i*(COL_WEIGHT+1)+2]%>])>0) ? 0:1;
    /*<%end%>*/
 
    //行処理が終わった時にパリティビットが1であれば出力valid信号を1とする
@@ -129,6 +131,8 @@ module ctrl(/*AUTOARG*/
      begin
 	if(!xrst)
 	  r_state <= zStateInit;
+	else if(w_trans_data)
+	  r_state <= zStateData;
 	else if(w_trans_row | ((r_state==zStateColumn) & (r_counter == <%=COL_WEIGHT*COL_WEIGHT*ROW_NUMBER+2%>) & w_o_val_column))
 	  r_state <= zStateRow;
 	else if(w_trans_column)
@@ -136,6 +140,20 @@ module ctrl(/*AUTOARG*/
 	else
 	  r_state <= r_state;
      end // always (posedge clk or negedge xrst)
+
+   //入力データからλをつくる
+   /*<% for i in 0...ROW_NUMBER%>*/
+   always @(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  r_lambda[<%=i%>]<=0;
+	else if ((r_state==zStateData) & (r_counter==<%=(i/(Data_order+1)).to_i%>))
+	  r_lambda[<%=i%>]<=i_data[<%=WIDTH*(i+1)-WIDTH*Data_order*(i/Data_order).to_i-1%>:<%=WIDTH*i-WIDTH*Data_order*(i/Data_order).to_i%>];
+	else
+	  r_lambda[<%=i%>]<=r_lambda[<%=i%>];
+     end   
+   /*<%end%>*/
+
    
    //ベータの更新式
    /*<%0.upto(ROW_WEIGHT*COL_NUMBER-1) do |i| %>*/
@@ -171,6 +189,13 @@ module ctrl(/*AUTOARG*/
      begin
 	if (!xrst)
 	  r_counter <= 0;
+	else if (r_state == zStateData)
+	  begin
+	     if(r_counter == <%=(ROW_NUMBER/Data_order+1).to_i%>)
+	       r_counter <= 0;
+	     else
+	       r_counter <= r_counter + +1;
+	  end
 	else if (r_state == zStateRow & w_o_val_row)
 	  begin
 	     if (r_counter == <%=(ROW_WEIGHT-1)*ROW_WEIGHT*COL_NUMBER+2%>)
@@ -196,8 +221,10 @@ module ctrl(/*AUTOARG*/
 	  i_init_row <= 0;
 	else if (i_init_row == <%=ROW_WEIGHT-2%>)
 	  i_init_row <=0;
-	else
+	else if(r_state==zStateRow || w_trans_row==1)
 	  i_init_row <= i_init_row+1;
+	else
+	  i_init_row <= i_init_row;
      end
 
    //列処理の値の初期化
@@ -207,8 +234,10 @@ module ctrl(/*AUTOARG*/
 	  i_init_column <= 0;
 	else if (i_init_column == <%=COL_WEIGHT-1%>)
 	  i_init_column <=0;
-	else
+	else if(r_state==zStateColumn)
 	  i_init_column <= i_init_column+1;
+	else
+	  i_init_column <= i_init_column;
      end
 
    //繰り返し回数の更新
