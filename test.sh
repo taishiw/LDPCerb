@@ -1,12 +1,12 @@
 #!/bin/sh
-export ROW_NUMBER=100
-export COL_NUMBER=50
-export ROW_WEIGHT=4
+export ROW_NUMBER=6
+export COL_NUMBER=4
+export ROW_WEIGHT=3
 export COL_WEIGHT=2
 export WIDTH=12
 export INTEGER_WIDTH=4
 export DECIMAL_WIDTH=8
-export LOOP_MAX=1
+export LOOP_MAX=5
 snr=0
 echo $snr > snr.txt
 python3 minsumsim.py <snr.txt
