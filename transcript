@@ -1,25 +1,15 @@
-# //  ModelSim SE-64 10.2c Jul 18 2013 Linux 4.10.9-20170409-diskless-01+
-# //
-# //  Copyright 1991-2013 Mentor Graphics Corporation
-# //  All Rights Reserved.
-# //
-# //  THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY INFORMATION
-# //  WHICH IS THE PROPERTY OF MENTOR GRAPHICS CORPORATION OR ITS
-# //  LICENSORS AND IS SUBJECT TO LICENSE TERMS.
-# //
-# vsim test_test 
-# Loading work.test_test(fast)
-# Loading work.ctrl(fast)
-# Loading work.row(fast)
-# Loading work.add(fast)
-add wave sim:/test_test/*
-# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 1 times, errno 11
-# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 2 times, errno 11
-# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 3 times, errno 11
-# ** Error: Cannot lock WLF file: "vsim.wlf"
-#           errno 11: Resource temporarily unavailable.
-# ** Warning: (vsim-WLF-5000) WLF file currently in use: vsim.wlf
-#           File in use by: taishi  Hostname: shirasu  ProcessID: 25698
-#           Attempting to use alternate WLF file "./wlftzEUqr1".
-# ** Warning: (vsim-WLF-5001) Could not open WLF file:# Window cannot be closed because the modal window "File is Out-of-Date" is still open.
-t_test/ctrl/w_lambda
+# vsim -do {run -all ; exit } -c test_test 
+# ** Note: (vsim-3812) Design is being optimized...
+# ** Error: test_test.v(140): (vopt-2135) Too many port connections. Expected 9, found 19.
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_wen_alpha' not found in module 'ctrl' (10th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_raddr_alpha' not found in module 'ctrl' (11th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_waddr_alpha' not found in module 'ctrl' (12th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_rdata_alpha' not found in module 'ctrl' (13th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'o_rdata_alpha' not found in module 'ctrl' (14th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_wen_beta' not found in module 'ctrl' (15th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_raddr_beta' not found in module 'ctrl' (16th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_waddr_beta' not found in module 'ctrl' (17th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'i_rdata_beta' not found in module 'ctrl' (18th connection).
+# ** Error: test_test.v(140): (vopt-2912) Port 'o_rdata_beta' not found in module 'ctrl' (19th connection).
+# Optimization failed
+# Error loading design

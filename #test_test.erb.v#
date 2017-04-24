@@ -20,6 +20,15 @@ module test_test();
    wire [<%=WIDTH*ROW_WEIGHT*COL_NUMBER-1%>:0] w_alpha,w_beta;//ワイアα,β
    wire [<%=WIDTH-1%>:0] w_alpha_write [<%=ROW_WEIGHT*COL_NUMBER-1 %>:0];//書き込み用α
    wire [<%=WIDTH-1%>:0] w_beta_write [<%=ROW_WEIGHT*COL_NUMBER-1 %>:0]; //書き込み用β
+   
+   //メモリ関係
+   wire 		 i_wen_alpha,i_wen_beta;//write_enable信号
+   wire [7:0] 		 i_waddr_alpha, i_raddr_alpha;//書き込みアドレス，読み込みアドレス
+   wire [7:0] 		 i_waddr_beta, i_raddr_beta;//書き込みアドレス，読み込みアドレス 
+   wire [<%=WIDTH-1%>:0] i_wdata_alpha,i_wdata_beta;//書き込みデータ
+   reg [<%=WIDTH-1%>:0]  o_rdata_alpha,o_rdata_beta;//読み込みデータ
+   reg [<%=WIDTH-1%>:0]           mem_alpha[<%=ROW_WEIGHT*COL_NUMBER-1%>:0];//メモリ
+   reg [<%=WIDTH-1%>:0] 	  mem_beta[<%=COL_WEIGHT*ROW_NUMBER-1%>:0]; 	  
    parameter zClk = 20;            //クロックタイム
    integer 		 mcd1,mcd2,mcd3;//ファイル書き込み用
    integer 		 i;	 
@@ -39,7 +48,20 @@ module test_test();
    //書き込み用データ生成
    /*<%for i in 0...ROW_WEIGHT*COL_NUMBER %>*/
    assign w_beta_write[<%=i%>]=w_beta[<%=WIDTH*i+WIDTH-1%>:<%=WIDTH*i%>];
-   /*<%end%>*/  
+   /*<%end%>*/
+   
+   always@(posedge clk)
+     if (i_wen_alpha) mem[i_waddr_alpha] <= i_wdata_alpha;
+   
+   always@(posedge clk)
+     if (!i_wen_alpha) o_rdata_alpha <= mem_alpha[i_raddr_alpha];
+
+    always@(posedge clk)
+     if (i_wen_beta) mem[i_waddr_beta] <= i_wdata_beta;
+   
+   always@(posedge clk)
+     if (!i_wen_beta) o_rdata_beta <= mem_beta[i_raddr_beta];
+   
    
    
    initial begin
@@ -58,7 +80,15 @@ module test_test();
 	      .xrst(xrst),
 	      .o_alpha(w_alpha),
 	      .o_beta(w_beta),
-	      .r_loop(w_loop)
+	      .r_loop(w_loop),
+	      .i_wen_alpha(i_wen_alpha),
+	      .i_raddr_alpha(i_raddr_alpha[7:0]),
+	      .i_waddr_alpha(i_waddr_alpha[7:0]),
+	      .o_rdata_alpha(o_rdata_alpha[<%=WIDTH-1%>:0]),
+	      .i_wen_beta(i_wen_beta),
+	      .i_raddr_beta(i_raddr_beta[7:0]),
+	      .i_waddr_beta(i_waddr_beta[7:0]),
+	      .o_rdata_beta(o_rdata_beta[<%=WIDTH-1%>:0])
 	      );
 
    //データ書き込み（パリティビットが0か最大繰り返し回数に達する
@@ -96,6 +126,26 @@ module test_test();
 	 i_val <= 1;
       end
    endtask // initialize
+
+   module sram
+  (
+   input             clk,
+   input             i_wen,//write_enable信号
+   input [7:0]       i_waddr, i_raddr,//書き込みアドレス，読み込みアドレス
+   input [<%=WIDTH-1%>:0]      i_wdata,//書き込みデータ
+   output reg [<%=WIDTH-1%>:0] o_rdata//読み込みデータ
+   /*AUTOARG*/);
+
+  reg [<%=WIDTH-1%>:0]           mem[<%=ROW_WEIGHT*COL_NUMBER-1%>:0];
+
+  always@(posedge clk)
+    if (i_wen) mem[i_waddr] <= i_wdata;
+  
+  always@(posedge clk)
+    if (!i_wen) o_rdata <= mem[i_raddr];
+
+  
+endmodule // sram
    
 endmodule // test_test
 
