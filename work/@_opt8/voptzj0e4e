@@ -1,22 +1,44 @@
 m255
 K4
 z0
+T_opt
+VABNc;doX_h?bfCE3N553H2
+Z0 04 9 4 work test_test fast 0
+=1-f44d3043a0c6-58889ac1-31de2-7ab8
+Z1 o-quiet -auto_acc_if_foreign -work work
+n@_opt
+Z2 OL;O;10.2c;57
+!s110 1485347521
+T_opt1
+VlDj0YHG@6?LEP8L`7eIoQ0
+Z3 04 9 4 work test_test fast 0
+=1-f44d3043a0c6-5892cd15-8f5f2-2a13
+R1
+n@_opt1
+R2
+!s110 1486015765
+T_opt2
+V<`86ZK;7FGS?W:GWPU22X3
+R3
+=1-f44d3043a0c6-5894315f-d4885-413d
+R1
+n@_opt2
+R2
+!s110 1486106976
+T_opt3
+V53E`@?SR0GhHNVz@czK><3
+R3
+=1-f44d3043a0c6-58cb8abc-5c7d4-54c0
+R1
+n@_opt3
+R2
+!s110 1489734332
 T_opt4
-!s110 1493096791
-V=IASW<[BVTi[cDnzHJVz`0
-04 9 4 work test_test fast 0
-=1-f44d3043a0c6-58fed957-3982e-756d
-o-quiet -auto_acc_if_foreign -work work
+V^EH5>RY5zHY9;OnT44A3n0
+R3
+=1-f44d3043a0c6-58e60119-4edb0-23cd
+R1
 n@_opt4
-<<<<<<< HEAD
-OL;O;10.2c;57
-vadd
-Z0 !s110 1493096790
-IBfJ?M^[fJXCEXMAXK:][i3
-Z1 V`JN@9S9cnhjKRR_L]QIcM3
-Z2 d/home/taishi/LDPCerb
-Z3 w1493096790
-=======
 R2
 !s110 1491468570
 T_opt5
@@ -77,20 +99,12 @@ IBfJ?M^[fJXCEXMAXK:][i3
 R5
 Z13 d/home/taishi/LDPCerb
 Z14 w1492758277
->>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 8add.v
 Fadd.v
 L0 3
-Z4 OL;L;10.2c;57
+R7
 r1
 31
-<<<<<<< HEAD
-Z5 !s108 1493096790.146693
-Z6 !s107 sram.v|add.v|row.v|Ctrl.v|test_test.v|
-Z7 !s90 +acc|-lint|test_test.v|Ctrl.v|row.v|add.v|sram.v|
-Z8 o+acc -lint -L mtiAvm -L mtiOvm -L mtiUvm -L mtiUPF
-!s100 Y=MlnK>YmI0RJ7Z?76LMj1
-=======
 Z15 !s108 1492758277.511710
 Z16 !s107 add.v|row.v|Ctrl.v|test_test.v|
 Z17 !s90 +acc|-lint|test_test.v|Ctrl.v|row.v|add.v|
@@ -136,22 +150,10 @@ R11
 !s108 1486108726.740794
 !s107 com.v|add.v|min.v|exor.v|test_test.v|
 !s90 -##implicit##push_minusfile_path##|/home/taishi/work/LDPCparity/vlog.opt|-##implicit##pop_minusfile_path##|+acc|-lint|test_test.v|exor.v|min.v|add.v|com.v|
->>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 !i10b 1
 !s85 0
 !i111 0
 vctrl
-<<<<<<< HEAD
-Z9 !s110 1493096790
-I7g7:b@5cVFo0_3Q3J2^YS1
-R1
-R2
-R3
-8Ctrl.v
-FCtrl.v
-L0 3
-R4
-=======
 R12
 I:RWSVEG2O6nZXQIb[`b`D0
 R5
@@ -242,97 +244,94 @@ w1487053571
 Fmin.v
 L0 1
 R7
->>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 r1
 31
+R20
+R21
+R22
+R11
+!s100 M@@kKj@f`7AaZVT3k7SbI2
+!i10b 1
+!s85 0
+!i111 0
+vparity
+R4
+I9gglibj1_`=87XL@VO8=Z2
 R5
 R6
+w1485926351
+8parity.v
+Fparity.v
+L0 1
 R7
+r1
+31
 R8
+R9
+R10
+R11
+!s100 2MJ9^9[hL]zaN=]=MznXz0
 !i10b 1
-!s100 8RAczb6bZddEcSCafTblm2
 !s85 0
 !i111 0
 vrow
-<<<<<<< HEAD
-R9
-=======
 R12
->>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 I]I`2lFoC;>E<7MY7e`I3S0
-R1
-R2
-R3
+R5
+R13
+R14
 8row.v
 Frow.v
 L0 2
-R4
+R7
 r1
 31
-<<<<<<< HEAD
-R5
-R6
-R7
-R8
-=======
 R15
 R16
 R17
 R11
->>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 !s100 ]Q;ae<V[=@Zd>zQel@eb>1
 !i10b 1
 !s85 0
 !i111 0
-vsram
-R9
-I89EQY98;IQ=nIob^VR0OA1
-R1
-R2
-Z10 w1493096789
-8sram.v
-Fsram.v
-L0 3
-R4
+vtest_LDPC
+IMZRW<Bn:aZ:gh3Eo3Qk2N0
+R5
+d/home/taishi/work/LDPCparity
+w1485253468
+8test_LDPC.v
+Ftest_LDPC.v
+L0 1
+R7
 r1
 31
-R5
-R6
-R7
-R8
-!s100 dCDS05F1`ZjQ>D5HaLJc03
+R11
+ntest_@l@d@p@c
+!s110 1485254802
+!s100 em3D=2Q[IQSXM0kiP`l>73
+!s108 1485254802.681983
+!s107 test_LDPC.v|
+!s90 +acc|-lint|test_LDPC.v|
 !i10b 1
 !s85 0
 !i111 0
 vtest_test
-<<<<<<< HEAD
-R9
-I6[cUGRUgzzET7ZCX__B?S1
-R1
-R2
-R10
-=======
 R12
 I6[cUGRUgzzET7ZCX__B?S1
 R5
 R13
 R14
->>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 8test_test.v
 Ftest_test.v
 L0 3
-R4
+R7
 r1
 31
-R5
-R6
-R7
-R8
-!s100 ZMnhIkaPQjWX``9SbfJ^=2
+R15
+R16
+R17
+R11
 !i10b 1
-<<<<<<< HEAD
-=======
 !s100 ZMnhIkaPQjWX``9SbfJ^=2
->>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 !s85 0
 !i111 0

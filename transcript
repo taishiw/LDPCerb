@@ -1,7 +1,11 @@
+<<<<<<< HEAD
 # vsim -do {run -all ; exit } -c test_test 
 # ** Note: (vsim-3813) Design is being optimized due to module recompilation...
 # ** Note: (vopt-143) Recognized 1 FSM in module "ctrl(fast)".
 # //  ModelSim SE-64 10.2c Jul 18 2013 Linux 4.10.11-20170423-diskless-01+
+=======
+# //  ModelSim SE-64 10.2c Jul 18 2013 Linux 4.10.9-20170409-diskless-01+
+>>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
 # //
 # //  Copyright 1991-2013 Mentor Graphics Corporation
 # //  All Rights Reserved.
@@ -10,10 +14,12 @@
 # //  WHICH IS THE PROPERTY OF MENTOR GRAPHICS CORPORATION OR ITS
 # //  LICENSORS AND IS SUBJECT TO LICENSE TERMS.
 # //
+# vsim test_test 
 # Loading work.test_test(fast)
 # Loading work.ctrl(fast)
 # Loading work.row(fast)
 # Loading work.add(fast)
+<<<<<<< HEAD
 # Loading work.sram(fast)
 # run -all  
 # ** Warning: (vsim-8233) sram.v(15): Index 255 into array dimension [11:0] is out of bounds.
@@ -21,3 +27,16 @@
 # Break in Module test_test at test_test.v line 124
 # Stopped at test_test.v line 124 
 #  exit  
+=======
+add wave sim:/test_test/*
+# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 1 times, errno 11
+# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 2 times, errno 11
+# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 3 times, errno 11
+# ** Error: Cannot lock WLF file: "vsim.wlf"
+#           errno 11: Resource temporarily unavailable.
+# ** Warning: (vsim-WLF-5000) WLF file currently in use: vsim.wlf
+#           File in use by: taishi  Hostname: shirasu  ProcessID: 25698
+#           Attempting to use alternate WLF file "./wlftzEUqr1".
+# ** Warning: (vsim-WLF-5001) Could not open WLF file:# Window cannot be closed because the modal window "File is Out-of-Date" is still open.
+t_test/ctrl/w_lambda
+>>>>>>> 32b0834d7cccb73814f6849510522270f88f07bf
