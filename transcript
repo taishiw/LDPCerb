@@ -1,15 +1,23 @@
 # vsim -do {run -all ; exit } -c test_test 
-# ** Note: (vsim-3812) Design is being optimized...
-# ** Error: test_test.v(140): (vopt-2135) Too many port connections. Expected 9, found 19.
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_wen_alpha' not found in module 'ctrl' (10th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_raddr_alpha' not found in module 'ctrl' (11th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_waddr_alpha' not found in module 'ctrl' (12th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_rdata_alpha' not found in module 'ctrl' (13th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'o_rdata_alpha' not found in module 'ctrl' (14th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_wen_beta' not found in module 'ctrl' (15th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_raddr_beta' not found in module 'ctrl' (16th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_waddr_beta' not found in module 'ctrl' (17th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'i_rdata_beta' not found in module 'ctrl' (18th connection).
-# ** Error: test_test.v(140): (vopt-2912) Port 'o_rdata_beta' not found in module 'ctrl' (19th connection).
-# Optimization failed
-# Error loading design
+# ** Note: (vsim-3813) Design is being optimized due to module recompilation...
+# ** Note: (vopt-143) Recognized 1 FSM in module "ctrl(fast)".
+# //  ModelSim SE-64 10.2c Jul 18 2013 Linux 4.10.11-20170423-diskless-01+
+# //
+# //  Copyright 1991-2013 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY INFORMATION
+# //  WHICH IS THE PROPERTY OF MENTOR GRAPHICS CORPORATION OR ITS
+# //  LICENSORS AND IS SUBJECT TO LICENSE TERMS.
+# //
+# Loading work.test_test(fast)
+# Loading work.ctrl(fast)
+# Loading work.row(fast)
+# Loading work.add(fast)
+# Loading work.sram(fast)
+# run -all  
+# ** Warning: (vsim-8233) sram.v(15): Index 255 into array dimension [11:0] is out of bounds.
+#    Time: 180 ns  Iteration: 1  Instance: /test_test/ctrl/srambeta
+# Break in Module test_test at test_test.v line 124
+# Stopped at test_test.v line 124 
+#  exit  
