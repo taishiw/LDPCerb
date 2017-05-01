@@ -556,6 +556,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
 
             
             L_posteriori[j] = Lc[j] + sum(Lr[Mj,j])
+        print(L_posteriori)
 
         x = np.array(L_posteriori <= 0).astype(int)
        
@@ -563,6 +564,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
             
         product = InCode(H,x)
         if product or count >= max_iter:
+            print("count:",count)
             break
     for k in range(row_weight*n):
         g.write(str(alpha[k])+'\n')

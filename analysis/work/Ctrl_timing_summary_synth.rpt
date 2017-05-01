@@ -1,8 +1,8 @@
 Copyright 1986-2014 Xilinx, Inc. All Rights Reserved.
 -----------------------------------------------------------------------------------------
 | Tool Version      : Vivado v.2014.4 (lin64) Build 1071353 Tue Nov 18 16:47:07 MST 2014
-| Date              : Thu Apr 20 13:02:36 2017
-| Host              : shirasu running 64-bit Debian GNU/Linux 8.7 (jessie)
+| Date              : Mon May  1 16:38:20 2017
+| Host              : shirasu running 64-bit unknown
 | Command           : report_timing_summary -file work/Ctrl_timing_summary_synth.rpt
 | Design            : ctrl
 | Device            : 7v2000t-flg1925
@@ -74,14 +74,14 @@ Table of Contents
 
 5. checking no_input_delay
 --------------------------
- There are 998 input ports with no input delay specified. (HIGH)
+ There are 18 input ports with no input delay specified. (HIGH)
 
  There are 0 input ports with no input delay but user has a false path constraint.
 
 
 6. checking no_output_delay
 ---------------------------
- There are 108 ports with no output delay specified. (HIGH)
+ There are 408 ports with no output delay specified. (HIGH)
 
  There are 0 ports with no output delay but user has a false path constraint
 
@@ -131,7 +131,7 @@ Table of Contents
 
     WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints     WPWS(ns)     TPWS(ns)  TPWS Failing Endpoints  TPWS Total Endpoints  
     -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------     --------     --------  ----------------------  --------------------  
-      3.349        0.000                      0                11117        0.189        0.000                      0                11117        4.650        0.000                       0                  6164  
+      0.227        0.000                      0                  831        0.189        0.000                      0                  831        4.650        0.000                       0                   584  
 
 
 All user specified timing constraints are met.
@@ -154,7 +154,7 @@ clk    {0.000 5.000}      10.000          100.000
 
 Clock             WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints     WPWS(ns)     TPWS(ns)  TPWS Failing Endpoints  TPWS Total Endpoints  
 -----             -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------     --------     --------  ----------------------  --------------------  
-clk                 3.349        0.000                      0                11117        0.189        0.000                      0                11117        4.650        0.000                       0                  6164  
+clk                 0.227        0.000                      0                  831        0.189        0.000                      0                  831        4.650        0.000                       0                   584  
 
 
 ------------------------------------------------------------------------------------------------
@@ -185,7 +185,7 @@ Path Group    From Clock    To Clock          WNS(ns)      TNS(ns)  TNS Failing 
 From Clock:  clk
   To Clock:  clk
 
-Setup :            0  Failing Endpoints,  Worst Slack        3.349ns,  Total Violation        0.000ns
+Setup :            0  Failing Endpoints,  Worst Slack        0.227ns,  Total Violation        0.000ns
 Hold  :            0  Failing Endpoints,  Worst Slack        0.189ns,  Total Violation        0.000ns
 PW    :            0  Failing Endpoints,  Worst Slack        4.650ns,  Total Violation        0.000ns
 ---------------------------------------------------------------------------------------------------
@@ -193,16 +193,16 @@ PW    :            0  Failing Endpoints,  Worst Slack        4.650ns,  Total Vio
 
 Max Delay Paths
 --------------------------------------------------------------------------------------
-Slack (MET) :             3.349ns  (required time - arrival time)
-  Source:                 r_counter_reg[6]/C
+Slack (MET) :             0.227ns  (required time - arrival time)
+  Source:                 r_counter_reg[29]/C
                             (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@5.000ns period=10.000ns})
-  Destination:            row/r_min_reg[0]/CE
-                            (rising edge-triggered cell FDSE clocked by clk  {rise@0.000ns fall@5.000ns period=10.000ns})
+  Destination:            add/o_data_reg[13]/D
+                            (rising edge-triggered cell FDRE clocked by clk  {rise@0.000ns fall@5.000ns period=10.000ns})
   Path Group:             clk
   Path Type:              Setup (Max at Slow Process Corner)
   Requirement:            10.000ns  (clk rise@10.000ns - clk rise@0.000ns)
-  Data Path Delay:        6.366ns  (logic 2.361ns (37.088%)  route 4.005ns (62.912%))
-  Logic Levels:           15  (CARRY4=4 LUT3=1 LUT4=2 LUT5=1 LUT6=5 MUXF7=1 MUXF8=1)
+  Data Path Delay:        9.759ns  (logic 2.038ns (20.883%)  route 7.721ns (79.117%))
+  Logic Levels:           22  (CARRY4=2 LUT3=2 LUT4=3 LUT5=3 LUT6=12)
   Clock Path Skew:        -0.029ns (DCD - SCD + CPR)
     Destination Clock Delay (DCD):    1.795ns = ( 11.795 - 10.000 ) 
     Source Clock Delay      (SCD):    1.985ns
@@ -221,46 +221,58 @@ Slack (MET) :             3.349ns  (required time - arrival time)
                          IBUF (Prop_ibuf_I_O)         0.698     0.698 r  clk_IBUF_inst/O
                          net (fo=1, unplaced)         0.584     1.281    clk_IBUF
                          BUFG (Prop_bufg_I_O)         0.120     1.401 r  clk_IBUF_BUFG_inst/O
-                         net (fo=6163, unplaced)      0.584     1.985    clk_IBUF_BUFG
-                                                                      r  r_counter_reg[6]/C
+                         net (fo=583, unplaced)       0.584     1.985    clk_IBUF_BUFG
+                                                                      r  r_counter_reg[29]/C
   -------------------------------------------------------------------    -------------------
-                         FDCE (Prop_fdce_C_Q)         0.296     2.281 f  r_counter_reg[6]/Q
-                         net (fo=930, unplaced)       0.683     2.964    row/Q[6]
-                         LUT4 (Prop_lut4_I0_O)        0.156     3.120 r  row/r_min[1]_i_303/O
-                         net (fo=2, unplaced)         0.396     3.516    row/n_0_r_min[1]_i_303
-                         LUT6 (Prop_lut6_I5_O)        0.168     3.684 r  row/r_min[1]_i_164/O
-                         net (fo=1, unplaced)         0.000     3.684    row/n_0_r_min[1]_i_164
-                         MUXF7 (Prop_muxf7_I0_O)      0.143     3.827 r  row/r_min_reg[1]_i_80/O
-                         net (fo=1, unplaced)         0.000     3.827    row/n_0_r_min_reg[1]_i_80
-                         MUXF8 (Prop_muxf8_I0_O)      0.056     3.883 r  row/r_min_reg[1]_i_36/O
-                         net (fo=1, unplaced)         0.244     4.127    row/n_0_r_min_reg[1]_i_36
-                         LUT6 (Prop_lut6_I3_O)        0.156     4.283 r  row/r_min[1]_i_17/O
-                         net (fo=3, unplaced)         0.257     4.540    row/n_0_r_min[1]_i_17
-                         LUT6 (Prop_lut6_I2_O)        0.053     4.593 r  row/r_min[1]_i_8/O
-                         net (fo=1, unplaced)         0.340     4.933    row/n_0_r_min[1]_i_8
-                         LUT6 (Prop_lut6_I4_O)        0.053     4.986 f  row/r_min[1]_i_2/O
-                         net (fo=4, unplaced)         0.543     5.529    row/O238
-                         LUT3 (Prop_lut3_I1_O)        0.069     5.598 r  row/r_min[3]_i_5/O
-                         net (fo=1, unplaced)         0.000     5.598    row/n_0_r_min[3]_i_5
-                         CARRY4 (Prop_carry4_DI[1]_CO[3])
-                                                      0.319     5.917 r  row/r_min_reg[3]_i_2/CO[3]
-                         net (fo=1, unplaced)         0.000     5.917    row/n_0_r_min_reg[3]_i_2
-                         CARRY4 (Prop_carry4_CI_O[3])
-                                                      0.187     6.104 f  row/r_min_reg[7]_i_2/O[3]
-                         net (fo=1, unplaced)         0.358     6.462    row/n_4_r_min_reg[7]_i_2
-                         LUT6 (Prop_lut6_I2_O)        0.142     6.604 f  row/r_min[7]_i_1/O
-                         net (fo=3, unplaced)         0.551     7.155    row/funcabs_return[7]
-                         LUT4 (Prop_lut4_I2_O)        0.057     7.212 r  row/r_min[11]_i_15/O
-                         net (fo=1, unplaced)         0.000     7.212    row/n_0_r_min[11]_i_15
-                         CARRY4 (Prop_carry4_DI[3]_CO[3])
-                                                      0.245     7.457 r  row/r_min_reg[11]_i_6/CO[3]
-                         net (fo=1, unplaced)         0.000     7.457    row/n_0_r_min_reg[11]_i_6
-                         CARRY4 (Prop_carry4_CI_CO[1])
-                                                      0.108     7.565 r  row/r_min_reg[11]_i_3/CO[1]
-                         net (fo=1, unplaced)         0.240     7.805    row/n_2_r_min_reg[11]_i_3
-                         LUT5 (Prop_lut5_I0_O)        0.153     7.958 r  row/r_min[11]_i_1/O
-                         net (fo=12, unplaced)        0.393     8.351    row/n_0_r_min[11]_i_1
-                         FDSE                                         r  row/r_min_reg[0]/CE
+                         FDCE (Prop_fdce_C_Q)         0.296     2.281 f  r_counter_reg[29]/Q
+                         net (fo=6, unplaced)         0.573     2.854    sramlambda/Q[29]
+                         LUT4 (Prop_lut4_I1_O)        0.153     3.007 f  sramlambda/mem_reg_i_283/O
+                         net (fo=82, unplaced)        0.435     3.442    sramlambda/O903
+                         LUT6 (Prop_lut6_I5_O)        0.053     3.495 f  sramlambda/estimate[146]_i_4/O
+                         net (fo=90, unplaced)        0.437     3.932    sramlambda/O668
+                         LUT6 (Prop_lut6_I5_O)        0.053     3.985 r  sramlambda/mem_reg_i_3343/O
+                         net (fo=4, unplaced)         0.545     4.530    add/i_raddr_lambda1856
+                         LUT3 (Prop_lut3_I0_O)        0.053     4.583 r  add/o_data[3]_i_2295/O
+                         net (fo=19, unplaced)        0.520     5.103    add/O1239
+                         LUT3 (Prop_lut3_I0_O)        0.067     5.170 r  add/o_data[3]_i_2954/O
+                         net (fo=16, unplaced)        0.296     5.466    sramalpha/I3401
+                         LUT6 (Prop_lut6_I1_O)        0.168     5.634 r  sramalpha/o_data[11]_i_3301/O
+                         net (fo=1, unplaced)         0.340     5.974    sramalpha/n_0_o_data[11]_i_3301
+                         LUT6 (Prop_lut6_I1_O)        0.053     6.027 r  sramalpha/o_data[11]_i_3209/O
+                         net (fo=1, unplaced)         0.340     6.367    sramalpha/n_0_o_data[11]_i_3209
+                         LUT5 (Prop_lut5_I1_O)        0.053     6.420 f  sramalpha/o_data[11]_i_3062/O
+                         net (fo=1, unplaced)         0.340     6.760    sramalpha/n_0_o_data[11]_i_3062
+                         LUT6 (Prop_lut6_I0_O)        0.053     6.813 f  sramalpha/o_data[11]_i_2905/O
+                         net (fo=1, unplaced)         0.340     7.153    sramalpha/n_0_o_data[11]_i_2905
+                         LUT6 (Prop_lut6_I0_O)        0.053     7.206 f  sramalpha/o_data[11]_i_2728/O
+                         net (fo=1, unplaced)         0.340     7.546    sramalpha/n_0_o_data[11]_i_2728
+                         LUT6 (Prop_lut6_I5_O)        0.053     7.599 r  sramalpha/o_data[11]_i_2461/O
+                         net (fo=1, unplaced)         0.340     7.939    sramalpha/n_0_o_data[11]_i_2461
+                         LUT5 (Prop_lut5_I4_O)        0.053     7.992 f  sramalpha/o_data[11]_i_2098/O
+                         net (fo=1, unplaced)         0.340     8.332    sramlambda/I738
+                         LUT6 (Prop_lut6_I5_O)        0.053     8.385 f  sramlambda/o_data[11]_i_1656/O
+                         net (fo=1, unplaced)         0.521     8.906    sramalpha/I603
+                         LUT4 (Prop_lut4_I1_O)        0.053     8.959 f  sramalpha/o_data[11]_i_1232/O
+                         net (fo=1, unplaced)         0.340     9.299    sramalpha/n_0_o_data[11]_i_1232
+                         LUT6 (Prop_lut6_I5_O)        0.053     9.352 r  sramalpha/o_data[11]_i_609/O
+                         net (fo=1, unplaced)         0.310     9.662    sramlambda/I2244
+                         LUT4 (Prop_lut4_I2_O)        0.053     9.715 r  sramlambda/o_data[11]_i_188/O
+                         net (fo=1, unplaced)         0.340    10.055    sramalpha/I2667
+                         LUT6 (Prop_lut6_I2_O)        0.053    10.108 r  sramalpha/o_data[11]_i_50/O
+                         net (fo=1, unplaced)         0.340    10.448    sramalpha/n_0_o_data[11]_i_50
+                         LUT6 (Prop_lut6_I4_O)        0.053    10.501 r  sramalpha/o_data[11]_i_16/O
+                         net (fo=1, unplaced)         0.340    10.841    sramalpha/n_0_o_data[11]_i_16
+                         LUT6 (Prop_lut6_I3_O)        0.053    10.894 r  sramalpha/o_data[11]_i_10/O
+                         net (fo=1, unplaced)         0.344    11.238    add/I166
+                         LUT5 (Prop_lut5_I4_O)        0.053    11.291 r  add/o_data[11]_i_6/O
+                         net (fo=1, unplaced)         0.000    11.291    add/n_0_o_data[11]_i_6
+                         CARRY4 (Prop_carry4_S[3]_CO[3])
+                                                      0.233    11.524 r  add/o_data_reg[11]_i_1/CO[3]
+                         net (fo=1, unplaced)         0.000    11.524    add/n_0_o_data_reg[11]_i_1
+                         CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.220    11.744 r  add/o_data_reg[15]_i_1/O[1]
+                         net (fo=1, unplaced)         0.000    11.744    add/n_6_o_data_reg[15]_i_1
+                         FDRE                                         r  add/o_data_reg[13]/D
   -------------------------------------------------------------------    -------------------
 
                          (clock clk rise edge)       10.000    10.000 r  
@@ -269,16 +281,16 @@ Slack (MET) :             3.349ns  (required time - arrival time)
                          IBUF (Prop_ibuf_I_O)         0.573    10.573 r  clk_IBUF_inst/O
                          net (fo=1, unplaced)         0.554    11.127    clk_IBUF
                          BUFG (Prop_bufg_I_O)         0.113    11.240 r  clk_IBUF_BUFG_inst/O
-                         net (fo=6163, unplaced)      0.554    11.795    row/clk_IBUF_BUFG
-                                                                      r  row/r_min_reg[0]/C
+                         net (fo=583, unplaced)       0.554    11.795    add/clk_IBUF_BUFG
+                                                                      r  add/o_data_reg[13]/C
                          clock pessimism              0.161    11.956    
                          clock uncertainty           -0.035    11.920    
-                         FDSE (Setup_fdse_C_CE)      -0.220    11.700    row/r_min_reg[0]
+                         FDRE (Setup_fdre_C_D)        0.051    11.971    add/o_data_reg[13]
   -------------------------------------------------------------------
-                         required time                         11.700    
-                         arrival time                          -8.351    
+                         required time                         11.971    
+                         arrival time                         -11.744    
   -------------------------------------------------------------------
-                         slack                                  3.349    
+                         slack                                  0.227    
 
 
 
@@ -287,15 +299,15 @@ Slack (MET) :             3.349ns  (required time - arrival time)
 Min Delay Paths
 --------------------------------------------------------------------------------------
 Slack (MET) :             0.189ns  (arrival time - required time)
-  Source:                 r_loop_reg[6]/C
+  Source:                 row/o_val_reg/C
                             (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@5.000ns period=10.000ns})
-  Destination:            r_loop_reg[6]/D
+  Destination:            row/o_val_reg/D
                             (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@5.000ns period=10.000ns})
   Path Group:             clk
   Path Type:              Hold (Min at Fast Process Corner)
   Requirement:            0.000ns  (clk rise@0.000ns - clk rise@0.000ns)
   Data Path Delay:        0.285ns  (logic 0.178ns (62.534%)  route 0.107ns (37.466%))
-  Logic Levels:           1  (LUT3=1)
+  Logic Levels:           1  (LUT2=1)
   Clock Path Skew:        0.013ns (DCD - SCD - CPR)
     Destination Clock Delay (DCD):    0.813ns
     Source Clock Delay      (SCD):    0.617ns
@@ -309,14 +321,14 @@ Slack (MET) :             0.189ns  (arrival time - required time)
                          IBUF (Prop_ibuf_I_O)         0.099     0.099 r  clk_IBUF_inst/O
                          net (fo=1, unplaced)         0.246     0.345    clk_IBUF
                          BUFG (Prop_bufg_I_O)         0.026     0.371 r  clk_IBUF_BUFG_inst/O
-                         net (fo=6163, unplaced)      0.246     0.617    clk_IBUF_BUFG
-                                                                      r  r_loop_reg[6]/C
+                         net (fo=583, unplaced)       0.246     0.617    row/clk_IBUF_BUFG
+                                                                      r  row/o_val_reg/C
   -------------------------------------------------------------------    -------------------
-                         FDCE (Prop_fdce_C_Q)         0.114     0.731 r  r_loop_reg[6]/Q
-                         net (fo=2, unplaced)         0.107     0.837    r_loop_OBUF[6]
-                         LUT3 (Prop_lut3_I2_O)        0.064     0.901 r  r_loop[6]_i_2/O
-                         net (fo=1, unplaced)         0.000     0.901    n_0_r_loop[6]_i_2
-                         FDCE                                         r  r_loop_reg[6]/D
+                         FDCE (Prop_fdce_C_Q)         0.114     0.731 r  row/o_val_reg/Q
+                         net (fo=2, unplaced)         0.107     0.837    row/w_o_val_row
+                         LUT2 (Prop_lut2_I1_O)        0.064     0.901 r  row/o_val_i_1__0/O
+                         net (fo=1, unplaced)         0.000     0.901    row/n_0_o_val_i_1__0
+                         FDCE                                         r  row/o_val_reg/D
   -------------------------------------------------------------------    -------------------
 
                          (clock clk rise edge)        0.000     0.000 r  
@@ -325,10 +337,10 @@ Slack (MET) :             0.189ns  (arrival time - required time)
                          IBUF (Prop_ibuf_I_O)         0.265     0.265 r  clk_IBUF_inst/O
                          net (fo=1, unplaced)         0.259     0.524    clk_IBUF
                          BUFG (Prop_bufg_I_O)         0.030     0.554 r  clk_IBUF_BUFG_inst/O
-                         net (fo=6163, unplaced)      0.259     0.813    clk_IBUF_BUFG
-                                                                      r  r_loop_reg[6]/C
+                         net (fo=583, unplaced)       0.259     0.813    row/clk_IBUF_BUFG
+                                                                      r  row/o_val_reg/C
                          clock pessimism             -0.183     0.630    
-                         FDCE (Hold_fdce_C_D)         0.083     0.713    r_loop_reg[6]
+                         FDCE (Hold_fdce_C_D)         0.083     0.713    row/o_val_reg
   -------------------------------------------------------------------
                          required time                         -0.713    
                          arrival time                           0.901    
@@ -346,10 +358,10 @@ Waveform:           { 0 5 }
 Period:             10.000
 Sources:            { clk }
 
-Check Type        Corner  Lib Pin  Reference Pin  Required  Actual  Slack  Location  Pin                   
-Min Period        n/a     BUFG/I   n/a            1.600     10.000  8.400            clk_IBUF_BUFG_inst/I  
-Low Pulse Width   Fast    FDRE/C   n/a            0.350     5.000   4.650            add/o_data_reg[0]/C   
-High Pulse Width  Slow    FDRE/C   n/a            0.350     5.000   4.650            add/o_data_reg[0]/C   
+Check Type        Corner  Lib Pin             Reference Pin  Required  Actual  Slack  Location  Pin                          
+Min Period        n/a     RAMB18E1/CLKARDCLK  n/a            2.495     10.000  7.505            sramalpha/mem_reg/CLKARDCLK  
+Low Pulse Width   Fast    FDRE/C              n/a            0.350     5.000   4.650            add/o_data_reg[0]/C          
+High Pulse Width  Slow    FDRE/C              n/a            0.350     5.000   4.650            add/o_data_reg[0]/C          
 
 
 

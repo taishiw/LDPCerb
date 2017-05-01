@@ -5,8 +5,8 @@ from scipy.sparse import csr_matrix
 #import cv2
 import os
 from time import time
-#from IPython.display import display, HTML
 import scipy
+#from IPython.display import display, HTML
 f=open('inputtest.txt','w')
 g=open('outputsoftalpha.txt','w')
 h=open('outputsoftbeta.txt','w')
@@ -431,6 +431,7 @@ def BitsAndNodes(H):
     Nodes = [Nodes2j(tH,j)for j in range(n)]
     
     return Bits,Nodes
+
 def Decoding_logBP(H,y,SNR,max_iter):
         
     m,n=H.shape
@@ -452,7 +453,7 @@ def Decoding_logBP(H,y,SNR,max_iter):
     Lq=np.zeros(shape=(m,n))
     beta=[]
     alpha=[]
-    print(alpha)
+    #print(alpha)
     Lr = np.zeros(shape=(m,n))
     L = np.zeros(shape=(m,n))
     list=[]
@@ -464,13 +465,12 @@ def Decoding_logBP(H,y,SNR,max_iter):
     t=1
     for i in range(m):
         for j in range(n):
-            #print(i,j)
             if H[i][j]==1:
                 L[i][j]=int(t)
-                print(j)
                 list3.append(str(j))
                 t=t+1
-    print("list3=",list3)
+    #print("list3=",list3)
+    print(L)
     for k in range(0,m*(column_weight)):
                     numberlambda.write(str(list3[k])+'\n')
         
@@ -492,19 +492,35 @@ def Decoding_logBP(H,y,SNR,max_iter):
             if j in Nij: Nij.remove(j)
             
             list.extend(L[i,Nij]-1)
+    #print("list=",list)
             
     for k in range(0,m*(column_weight-1)*(column_weight)):
         numberrow.write(str(list[k])+'\n')
         #### ETAPE 2 : Verticale
+    print(m)
+    print(n)
+    k=0
+            
+    for i in range(m):
+        for j in range(n):
+            if(H[i][j]==1):
+                Mj=Nodes[j]
+                Mji = Mj.copy()
+                if i in Mji:Mji.remove(i)
+                list2.extend(L[Mji,j]-1)
+                list2.append(str(j))
+    """                
     for k in range (1,((m*column_weight)+1)):
         for j in range(n):
             for i in range(m):
                 if(L[i,j]==k):
+                    #print("k=",k)
                     Mj = Nodes[j]
                     Mji = Mj.copy()
                     if i in Mji: Mji.remove(i)
                     list2.extend(L[Mji,j]-1)
                     list2.append(str(j))
+    """
     for k in range(0,(row_weight)*(row_weight)*n):
         numbercolumn.write(str(list2[k])+'\n')
 
@@ -513,6 +529,8 @@ def Decoding_logBP(H,y,SNR,max_iter):
             Mj = Nodes[j]
             list4.extend(L[Mj,j]-1)
             list4.append(str(j))
+            #print("list4=",list4)
+    #print("list4=",list4)
     for k in range(0,(column_weight)*n):
         numberestimate.write(str(list4[k])+'\n')
  
@@ -602,4 +620,5 @@ for i in range(sample_size):
     for k in range(len(y)):#符号語を書き込み
         p.write(str(y[k])+'\n')
     Decoding_logBP(H,y,snr,max_iter)#min-sum復号法を適用
-
+t = time()-t
+print(t)

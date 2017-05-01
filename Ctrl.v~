@@ -1,0 +1,2681 @@
+/* */
+
+module ctrl(/*AUTOARG*/
+	    //Inputs
+	    i_data,i_val,
+	    //Outputs
+	    estimate,o_val,clk,xrst,r_loop
+	    );
+   input [15:0] i_data;//雑音の付加されたデータ
+   input 	     i_val;//入力のvalid信号
+   output reg [19:0] estimate;//推定結果
+   output 		   o_val;//出力のvalid信号
+   input 		   clk;//クロック信号
+   input 		   xrst;//リセット信号
+   output reg [6:0] 	      r_loop;//繰り返し回数レジスタ
+   //ステート情報
+   parameter zStateInit=0;
+   parameter zStateLambdaInit=1;
+   parameter zStateBetaInit=2;
+   parameter zStateRow=3;
+   parameter zStateEstimate=4;
+   parameter zStateColumn=5;
+   
+   reg [2:0] r_state;//ステートレジスタ
+   
+   reg [10:0] 			 r_counter;// カウンタ
+   reg [10:0] 			 alpha_counter,beta_counter;
+   
+   reg [2:0] 			 i_init_row;//行処理の初期化信号
+   reg [2:0] 			 i_init_column;//列処理の初期化信号
+   
+   wire 			 parity;//パリティビット
+   
+   wire [15:0]   w_i_data_row,w_i_data_column;//行処理，列処理それぞれの入力信号
+   wire [15:0]   w_o_data_column,w_o_data_row;//行処理，列処理の出力信号
+   reg 			   r_i_val_row,r_i_val_column;//行処理，列処理の入力のvalid信号
+   wire 		   w_o_val_row,w_o_val_column;//行処理，列処理の出力のvalid信号
+   wire 		   w_trans_row,w_trans_column,w_trans_lambdainit,w_trans_betainit,w_trans_estimate;//行処理，列処理の状態遷移
+   wire signed [15:0] o_data_test_alpha,o_data_test_beta;
+   wire signed [15:0] o_column_data;
+   
+   
+   //sram関係
+   
+   //lambda
+   wire 			   i_wen_lambda;
+   wire [7:0] 			   i_waddr_lambda,i_raddr_lambda;
+   wire [15:0] 	   i_wdata_lambda;
+   wire [15:0] 	   o_rdata_lambda;
+
+   //alpha
+   wire 			   i_wen_alpha;
+   wire [7:0] 			   i_waddr_alpha,i_raddr_alpha;
+   wire [15:0] 	   i_wdata_alpha;
+   wire [15:0] 	   o_rdata_alpha;
+
+   //beta
+   wire 			   i_wen_beta;
+   wire [7:0] 			   i_waddr_beta,i_raddr_beta;
+   wire [15:0] 	   i_wdata_beta;
+   wire [15:0] 	   o_rdata_beta;
+   
+   
+   assign w_trans_lambdainit = (r_state==zStateInit & i_val);
+
+   assign w_trans_betainit = (r_state == zStateLambdaInit) & (r_counter == 19);
+   //ステートが初期値のときvalid信号をうけたら，行処理にステートを移す
+   assign w_trans_row = (r_state==zStateBetaInit & r_counter==40) | (r_state==zStateColumn & r_counter==82);
+
+   assign w_trans_estimate=  (r_state == zStateRow) & (r_counter == 122) & w_o_val_row; 
+
+   //ステートが行処理かつカウンタが行処理の最後の処理かつ行処理の出力valid信号が１のときステートを列処理に移す
+   assign w_trans_column = (r_state == zStateEstimate) & (r_counter == 61); 
+   /*パリティビットを計算
+    行を取り出し，検査行列を1が立っている列の推定結果の和を
+    だして，すべての列の積をとる
+    */ 
+   assign parity=  /**/
+		   (
+		    /**/
+		    estimate[8]+
+	            /**/
+		    estimate[7]+
+	            /**/
+		    estimate[6]+
+	            /**/
+       		    estimate[5] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[16]+
+	            /**/
+		    estimate[12]+
+	            /**/
+		    estimate[4]+
+	            /**/
+       		    estimate[3] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[19]+
+	            /**/
+		    estimate[18]+
+	            /**/
+		    estimate[17]+
+	            /**/
+       		    estimate[2] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[15]+
+	            /**/
+		    estimate[14]+
+	            /**/
+		    estimate[13]+
+	            /**/
+       		    estimate[1] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[11]+
+	            /**/
+		    estimate[10]+
+	            /**/
+		    estimate[9]+
+	            /**/
+       		    estimate[0] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[19]+
+	            /**/
+		    estimate[8]+
+	            /**/
+		    estimate[4]+
+	            /**/
+       		    estimate[0] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[14]+
+	            /**/
+		    estimate[10]+
+	            /**/
+		    estimate[3]+
+	            /**/
+       		    estimate[2] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[13]+
+	            /**/
+		    estimate[11]+
+	            /**/
+		    estimate[7]+
+	            /**/
+       		    estimate[1] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[18]+
+	            /**/
+		    estimate[16]+
+	            /**/
+		    estimate[9]+
+	            /**/
+       		    estimate[6] ==0) &
+		   /**/
+		   (
+		    /**/
+		    estimate[17]+
+		    /**/
+		    estimate[15]+
+		    /**/
+		    estimate[12]+
+		    /**/
+		    estimate[5] ==0);
+   
+   /*    推定結果を計算
+    列を取り出し，検査行列で1が立っている行のαとその列のλの和をとり，
+    0より大きければ0，小さければ1とする
+    */
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[19] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 4)
+	  estimate[19] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[19] <=  estimate[19];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[18] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 7)
+	  estimate[18] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[18] <=  estimate[18];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[17] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 10)
+	  estimate[17] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[17] <=  estimate[17];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[16] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 13)
+	  estimate[16] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[16] <=  estimate[16];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[15] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 16)
+	  estimate[15] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[15] <=  estimate[15];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[14] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 19)
+	  estimate[14] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[14] <=  estimate[14];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[13] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 22)
+	  estimate[13] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[13] <=  estimate[13];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[12] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 25)
+	  estimate[12] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[12] <=  estimate[12];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[11] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 28)
+	  estimate[11] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[11] <=  estimate[11];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[10] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 31)
+	  estimate[10] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[10] <=  estimate[10];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[9] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 34)
+	  estimate[9] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[9] <=  estimate[9];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[8] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 37)
+	  estimate[8] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[8] <=  estimate[8];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[7] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 40)
+	  estimate[7] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[7] <=  estimate[7];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[6] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 43)
+	  estimate[6] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[6] <=  estimate[6];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[5] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 46)
+	  estimate[5] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[5] <=  estimate[5];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[4] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 49)
+	  estimate[4] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[4] <=  estimate[4];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[3] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 52)
+	  estimate[3] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[3] <=  estimate[3];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[2] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 55)
+	  estimate[2] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[2] <=  estimate[2];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[1] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 58)
+	  estimate[1] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[1] <=  estimate[1];
+     end
+   /**/
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  estimate[0] <= 0;
+	else if(r_state == zStateEstimate & r_counter == 61)
+	  estimate[0] <= (o_data_test_beta > 0) ? 0:1;
+	else
+	  estimate[0] <=  estimate[0];
+     end
+   /**/
+	
+
+   
+   
+   //行処理が終わった時にパリティビットが1であれば出力valid信号を1とする
+   assign o_val = ( (r_state==zStateColumn) & (r_counter == 2) & (parity==1) ) ? 1:0;
+   
+   //sram関係
+
+   //lambda
+   assign i_wen_lambda=(r_state==zStateLambdaInit) ? 1:0;
+   assign i_waddr_lambda=r_counter;
+   assign i_raddr_lambda=/**/
+			 (r_state == zStateBetaInit) & (r_counter == 0) ? 11:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 1) ? 12:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 2) ? 13:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 3) ? 14:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 4) ? 3:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 5) ? 7:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 6) ? 15:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 7) ? 16:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 8) ? 0:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 9) ? 1:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 10) ? 2:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 11) ? 17:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 12) ? 4:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 13) ? 5:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 14) ? 6:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 15) ? 18:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 16) ? 8:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 17) ? 9:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 18) ? 10:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 19) ? 19:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 20) ? 0:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 21) ? 11:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 22) ? 15:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 23) ? 19:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 24) ? 5:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 25) ? 9:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 26) ? 16:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 27) ? 17:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 28) ? 6:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 29) ? 8:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 30) ? 12:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 31) ? 18:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 32) ? 1:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 33) ? 3:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 34) ? 10:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 35) ? 13:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 36) ? 2:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 37) ? 4:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 38) ? 7:
+			 /**/
+			 (r_state == zStateBetaInit) & (r_counter == 39) ? 14:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 1) ? 11:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 3) ? 12:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 5) ? 13:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 7) ? 14:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 9) ? 3:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 11) ? 7:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 13) ? 15:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 15) ? 16:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 17) ? 0:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 19) ? 1:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 21) ? 2:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 23) ? 17:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 25) ? 4:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 27) ? 5:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 29) ? 6:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 31) ? 18:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 33) ? 8:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 35) ? 9:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 37) ? 10:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 39) ? 19:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 41) ? 0:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 43) ? 11:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 45) ? 15:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 47) ? 19:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 49) ? 5:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 51) ? 9:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 53) ? 16:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 55) ? 17:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 57) ? 6:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 59) ? 8:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 61) ? 12:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 63) ? 18:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 65) ? 1:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 67) ? 3:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 69) ? 10:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 71) ? 13:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 73) ? 2:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 75) ? 4:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 77) ? 7:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/ 
+			 (r_state == zStateColumn) & (r_counter == 79) ? 14:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 2 & r_state==zStateEstimate) ? 0:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 5 & r_state==zStateEstimate) ? 1:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 8 & r_state==zStateEstimate) ? 2:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 11 & r_state==zStateEstimate) ? 3:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 14 & r_state==zStateEstimate) ? 4:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 17 & r_state==zStateEstimate) ? 5:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 20 & r_state==zStateEstimate) ? 6:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 23 & r_state==zStateEstimate) ? 7:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 26 & r_state==zStateEstimate) ? 8:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 29 & r_state==zStateEstimate) ? 9:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 32 & r_state==zStateEstimate) ? 10:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 35 & r_state==zStateEstimate) ? 11:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 38 & r_state==zStateEstimate) ? 12:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 41 & r_state==zStateEstimate) ? 13:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 44 & r_state==zStateEstimate) ? 14:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 47 & r_state==zStateEstimate) ? 15:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 50 & r_state==zStateEstimate) ? 16:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 53 & r_state==zStateEstimate) ? 17:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 56 & r_state==zStateEstimate) ? 18:
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 /**/
+			 (r_counter == 59 & r_state==zStateEstimate) ? 19:
+			 /**/
+			 /**/
+			 0;
+   assign i_wdata_lambda=/**/
+		  (r_counter==0) ? i_data[15:0]:
+		  /**/
+		  (r_counter==1) ? i_data[15:0]:
+		  /**/
+		  (r_counter==2) ? i_data[15:0]:
+		  /**/
+		  (r_counter==3) ? i_data[15:0]:
+		  /**/
+		  (r_counter==4) ? i_data[15:0]:
+		  /**/
+		  (r_counter==5) ? i_data[15:0]:
+		  /**/
+		  (r_counter==6) ? i_data[15:0]:
+		  /**/
+		  (r_counter==7) ? i_data[15:0]:
+		  /**/
+		  (r_counter==8) ? i_data[15:0]:
+		  /**/
+		  (r_counter==9) ? i_data[15:0]:
+		  /**/
+		  (r_counter==10) ? i_data[15:0]:
+		  /**/
+		  (r_counter==11) ? i_data[15:0]:
+		  /**/
+		  (r_counter==12) ? i_data[15:0]:
+		  /**/
+		  (r_counter==13) ? i_data[15:0]:
+		  /**/
+		  (r_counter==14) ? i_data[15:0]:
+		  /**/
+		  (r_counter==15) ? i_data[15:0]:
+		  /**/
+		  (r_counter==16) ? i_data[15:0]:
+		  /**/
+		  (r_counter==17) ? i_data[15:0]:
+		  /**/
+		  (r_counter==18) ? i_data[15:0]:
+		  /**/
+		  (r_counter==19) ? i_data[15:0]:
+		  /**/
+		  0;
+   //alpha
+   assign i_wen_alpha=(r_state==zStateRow) & (
+					      /**/
+					      (r_counter == (4)) |
+					      /**/
+					      (r_counter == (7)) |
+					      /**/
+					      (r_counter == (10)) |
+					      /**/
+					      (r_counter == (13)) |
+					      /**/
+					      (r_counter == (16)) |
+					      /**/
+					      (r_counter == (19)) |
+					      /**/
+					      (r_counter == (22)) |
+					      /**/
+					      (r_counter == (25)) |
+					      /**/
+					      (r_counter == (28)) |
+					      /**/
+					      (r_counter == (31)) |
+					      /**/
+					      (r_counter == (34)) |
+					      /**/
+					      (r_counter == (37)) |
+					      /**/
+					      (r_counter == (40)) |
+					      /**/
+					      (r_counter == (43)) |
+					      /**/
+					      (r_counter == (46)) |
+					      /**/
+					      (r_counter == (49)) |
+					      /**/
+					      (r_counter == (52)) |
+					      /**/
+					      (r_counter == (55)) |
+					      /**/
+					      (r_counter == (58)) |
+					      /**/
+					      (r_counter == (61)) |
+					      /**/
+					      (r_counter == (64)) |
+					      /**/
+					      (r_counter == (67)) |
+					      /**/
+					      (r_counter == (70)) |
+					      /**/
+					      (r_counter == (73)) |
+					      /**/
+					      (r_counter == (76)) |
+					      /**/
+					      (r_counter == (79)) |
+					      /**/
+					      (r_counter == (82)) |
+					      /**/
+					      (r_counter == (85)) |
+					      /**/
+					      (r_counter == (88)) |
+					      /**/
+					      (r_counter == (91)) |
+					      /**/
+					      (r_counter == (94)) |
+					      /**/
+					      (r_counter == (97)) |
+					      /**/
+					      (r_counter == (100)) |
+					      /**/
+					      (r_counter == (103)) |
+					      /**/
+					      (r_counter == (106)) |
+					      /**/
+					      (r_counter == (109)) |
+					      /**/
+					      (r_counter == (112)) |
+					      /**/
+					      (r_counter == (115)) |
+					      /**/
+					      (r_counter == (118)) |
+					      /**/
+					      (r_counter == (121)));
+   assign i_waddr_alpha=
+			/**/
+			(r_counter == (4)) ? 0:
+			/**/
+			(r_counter == (7)) ? 1:
+			/**/
+			(r_counter == (10)) ? 2:
+			/**/
+			(r_counter == (13)) ? 3:
+			/**/
+			(r_counter == (16)) ? 4:
+			/**/
+			(r_counter == (19)) ? 5:
+			/**/
+			(r_counter == (22)) ? 6:
+			/**/
+			(r_counter == (25)) ? 7:
+			/**/
+			(r_counter == (28)) ? 8:
+			/**/
+			(r_counter == (31)) ? 9:
+			/**/
+			(r_counter == (34)) ? 10:
+			/**/
+			(r_counter == (37)) ? 11:
+			/**/
+			(r_counter == (40)) ? 12:
+			/**/
+			(r_counter == (43)) ? 13:
+			/**/
+			(r_counter == (46)) ? 14:
+			/**/
+			(r_counter == (49)) ? 15:
+			/**/
+			(r_counter == (52)) ? 16:
+			/**/
+			(r_counter == (55)) ? 17:
+			/**/
+			(r_counter == (58)) ? 18:
+			/**/
+			(r_counter == (61)) ? 19:
+			/**/
+			(r_counter == (64)) ? 20:
+			/**/
+			(r_counter == (67)) ? 21:
+			/**/
+			(r_counter == (70)) ? 22:
+			/**/
+			(r_counter == (73)) ? 23:
+			/**/
+			(r_counter == (76)) ? 24:
+			/**/
+			(r_counter == (79)) ? 25:
+			/**/
+			(r_counter == (82)) ? 26:
+			/**/
+			(r_counter == (85)) ? 27:
+			/**/
+			(r_counter == (88)) ? 28:
+			/**/
+			(r_counter == (91)) ? 29:
+			/**/
+			(r_counter == (94)) ? 30:
+			/**/
+			(r_counter == (97)) ? 31:
+			/**/
+			(r_counter == (100)) ? 32:
+			/**/
+			(r_counter == (103)) ? 33:
+			/**/
+			(r_counter == (106)) ? 34:
+			/**/
+			(r_counter == (109)) ? 35:
+			/**/
+			(r_counter == (112)) ? 36:
+			/**/
+			(r_counter == (115)) ? 37:
+			/**/
+			(r_counter == (118)) ? 38:
+			/**/
+			(r_counter == (121)) ? 39:
+			/**/
+			(r_counter == (124)) ? 40:
+			/**/
+			0;
+   
+   assign i_raddr_alpha=/**/
+		        /**/ 
+			(r_counter == 0 & r_state==zStateColumn) ? 21:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 2 & r_state==zStateColumn) ? 30:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 4 & r_state==zStateColumn) ? 35:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 6 & r_state==zStateColumn) ? 39:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 8 & r_state==zStateColumn) ? 33:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 10 & r_state==zStateColumn) ? 38:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 12 & r_state==zStateColumn) ? 22:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 14 & r_state==zStateColumn) ? 26:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 16 & r_state==zStateColumn) ? 20:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 18 & r_state==zStateColumn) ? 32:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 20 & r_state==zStateColumn) ? 36:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 22 & r_state==zStateColumn) ? 27:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 24 & r_state==zStateColumn) ? 37:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 26 & r_state==zStateColumn) ? 24:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 28 & r_state==zStateColumn) ? 28:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 30 & r_state==zStateColumn) ? 31:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 32 & r_state==zStateColumn) ? 29:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 34 & r_state==zStateColumn) ? 25:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 36 & r_state==zStateColumn) ? 34:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 38 & r_state==zStateColumn) ? 23:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 40 & r_state==zStateColumn) ? 8:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 42 & r_state==zStateColumn) ? 0:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 44 & r_state==zStateColumn) ? 6:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 46 & r_state==zStateColumn) ? 19:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 48 & r_state==zStateColumn) ? 13:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 50 & r_state==zStateColumn) ? 17:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 52 & r_state==zStateColumn) ? 7:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 54 & r_state==zStateColumn) ? 11:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 56 & r_state==zStateColumn) ? 14:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 58 & r_state==zStateColumn) ? 16:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 60 & r_state==zStateColumn) ? 1:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 62 & r_state==zStateColumn) ? 15:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 64 & r_state==zStateColumn) ? 9:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 66 & r_state==zStateColumn) ? 4:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 68 & r_state==zStateColumn) ? 18:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 70 & r_state==zStateColumn) ? 2:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 72 & r_state==zStateColumn) ? 10:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 74 & r_state==zStateColumn) ? 12:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 76 & r_state==zStateColumn) ? 5:
+			/**/
+			/**/
+		        /**/
+			/**/
+		        /**/ 
+			(r_counter == 78 & r_state==zStateColumn) ? 3:
+			/**/
+			/**/
+		        /**/
+			/**/
+			/**/
+			 /**/
+			(r_counter == 0 & r_state==zStateEstimate) ? 8:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 1 & r_state==zStateEstimate) ? 20:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 3 & r_state==zStateEstimate) ? 9:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 4 & r_state==zStateEstimate) ? 32:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 6 & r_state==zStateEstimate) ? 10:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 7 & r_state==zStateEstimate) ? 36:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 9 & r_state==zStateEstimate) ? 4:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 10 & r_state==zStateEstimate) ? 33:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 12 & r_state==zStateEstimate) ? 12:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 13 & r_state==zStateEstimate) ? 37:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 15 & r_state==zStateEstimate) ? 13:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 16 & r_state==zStateEstimate) ? 24:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 18 & r_state==zStateEstimate) ? 14:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 19 & r_state==zStateEstimate) ? 28:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 21 & r_state==zStateEstimate) ? 5:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 22 & r_state==zStateEstimate) ? 38:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 24 & r_state==zStateEstimate) ? 16:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 25 & r_state==zStateEstimate) ? 29:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 27 & r_state==zStateEstimate) ? 17:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 28 & r_state==zStateEstimate) ? 25:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 30 & r_state==zStateEstimate) ? 18:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 31 & r_state==zStateEstimate) ? 34:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 33 & r_state==zStateEstimate) ? 0:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 34 & r_state==zStateEstimate) ? 21:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 36 & r_state==zStateEstimate) ? 1:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 37 & r_state==zStateEstimate) ? 30:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 39 & r_state==zStateEstimate) ? 2:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 40 & r_state==zStateEstimate) ? 35:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 42 & r_state==zStateEstimate) ? 3:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 43 & r_state==zStateEstimate) ? 39:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 45 & r_state==zStateEstimate) ? 6:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 46 & r_state==zStateEstimate) ? 22:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 48 & r_state==zStateEstimate) ? 7:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 49 & r_state==zStateEstimate) ? 26:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 51 & r_state==zStateEstimate) ? 11:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 52 & r_state==zStateEstimate) ? 27:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 54 & r_state==zStateEstimate) ? 15:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 55 & r_state==zStateEstimate) ? 31:
+			/**/
+			/**/
+			 /**/
+			/**/
+			 /**/
+			(r_counter == 57 & r_state==zStateEstimate) ? 19:
+			/**/
+			/**/
+			 /**/
+			(r_counter == 58 & r_state==zStateEstimate) ? 23:
+			/**/
+			/**/
+			 /**/
+			/**/
+			0;
+   assign i_wdata_alpha=o_data_test_alpha;
+   
+   
+   //beta
+   assign i_wen_beta=(r_state==zStateBetaInit) | ((r_state==zStateColumn) & (
+									     /**/
+									     (r_counter==3) |
+									     /**/
+									     (r_counter==5) |
+									     /**/
+									     (r_counter==7) |
+									     /**/
+									     (r_counter==9) |
+									     /**/
+									     (r_counter==11) |
+									     /**/
+									     (r_counter==13) |
+									     /**/
+									     (r_counter==15) |
+									     /**/
+									     (r_counter==17) |
+									     /**/
+									     (r_counter==19) |
+									     /**/
+									     (r_counter==21) |
+									     /**/
+									     (r_counter==23) |
+									     /**/
+									     (r_counter==25) |
+									     /**/
+									     (r_counter==27) |
+									     /**/
+									     (r_counter==29) |
+									     /**/
+									     (r_counter==31) |
+									     /**/
+									     (r_counter==33) |
+									     /**/
+									     (r_counter==35) |
+									     /**/
+									     (r_counter==37) |
+									     /**/
+									     (r_counter==39) |
+									     /**/
+									     (r_counter==41) |
+									     /**/
+									     (r_counter==43) |
+									     /**/
+									     (r_counter==45) |
+									     /**/
+									     (r_counter==47) |
+									     /**/
+									     (r_counter==49) |
+									     /**/
+									     (r_counter==51) |
+									     /**/
+									     (r_counter==53) |
+									     /**/
+									     (r_counter==55) |
+									     /**/
+									     (r_counter==57) |
+									     /**/
+									     (r_counter==59) |
+									     /**/
+									     (r_counter==61) |
+									     /**/
+									     (r_counter==63) |
+									     /**/
+									     (r_counter==65) |
+									     /**/
+									     (r_counter==67) |
+									     /**/
+									     (r_counter==69) |
+									     /**/
+									     (r_counter==71) |
+									     /**/
+									     (r_counter==73) |
+									     /**/
+									     (r_counter==75) |
+									     /**/
+									     (r_counter==77) |
+									     /**/
+									     (r_counter==79) |
+									     /**/
+									     (r_counter==81)));
+   
+   assign i_waddr_beta=(r_state == zStateBetaInit & r_counter!=0) ? r_counter-1:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 3) ? 0:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 5) ? 1:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 7) ? 2:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 9) ? 3:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 11) ? 4:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 13) ? 5:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 15) ? 6:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 17) ? 7:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 19) ? 8:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 21) ? 9:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 23) ? 10:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 25) ? 11:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 27) ? 12:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 29) ? 13:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 31) ? 14:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 33) ? 15:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 35) ? 16:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 37) ? 17:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 39) ? 18:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 41) ? 19:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 43) ? 20:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 45) ? 21:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 47) ? 22:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 49) ? 23:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 51) ? 24:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 53) ? 25:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 55) ? 26:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 57) ? 27:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 59) ? 28:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 61) ? 29:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 63) ? 30:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 65) ? 31:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 67) ? 32:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 69) ? 33:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 71) ? 34:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 73) ? 35:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 75) ? 36:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 77) ? 37:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 79) ? 38:
+		       /**/
+		       (r_state == zStateColumn) & (r_counter == 81) ? 39:
+		       /**/
+		       0;
+   assign i_raddr_beta=/**/
+		       (r_counter == 0) ? 1:
+		       /**/
+		       (r_counter == 1) ? 2:
+		       /**/
+		       (r_counter == 2) ? 3:
+		       /**/
+		       (r_counter == 3) ? 0:
+		       /**/
+		       (r_counter == 4) ? 2:
+		       /**/
+		       (r_counter == 5) ? 3:
+		       /**/
+		       (r_counter == 6) ? 0:
+		       /**/
+		       (r_counter == 7) ? 1:
+		       /**/
+		       (r_counter == 8) ? 3:
+		       /**/
+		       (r_counter == 9) ? 0:
+		       /**/
+		       (r_counter == 10) ? 1:
+		       /**/
+		       (r_counter == 11) ? 2:
+		       /**/
+		       (r_counter == 12) ? 5:
+		       /**/
+		       (r_counter == 13) ? 6:
+		       /**/
+		       (r_counter == 14) ? 7:
+		       /**/
+		       (r_counter == 15) ? 4:
+		       /**/
+		       (r_counter == 16) ? 6:
+		       /**/
+		       (r_counter == 17) ? 7:
+		       /**/
+		       (r_counter == 18) ? 4:
+		       /**/
+		       (r_counter == 19) ? 5:
+		       /**/
+		       (r_counter == 20) ? 7:
+		       /**/
+		       (r_counter == 21) ? 4:
+		       /**/
+		       (r_counter == 22) ? 5:
+		       /**/
+		       (r_counter == 23) ? 6:
+		       /**/
+		       (r_counter == 24) ? 9:
+		       /**/
+		       (r_counter == 25) ? 10:
+		       /**/
+		       (r_counter == 26) ? 11:
+		       /**/
+		       (r_counter == 27) ? 8:
+		       /**/
+		       (r_counter == 28) ? 10:
+		       /**/
+		       (r_counter == 29) ? 11:
+		       /**/
+		       (r_counter == 30) ? 8:
+		       /**/
+		       (r_counter == 31) ? 9:
+		       /**/
+		       (r_counter == 32) ? 11:
+		       /**/
+		       (r_counter == 33) ? 8:
+		       /**/
+		       (r_counter == 34) ? 9:
+		       /**/
+		       (r_counter == 35) ? 10:
+		       /**/
+		       (r_counter == 36) ? 13:
+		       /**/
+		       (r_counter == 37) ? 14:
+		       /**/
+		       (r_counter == 38) ? 15:
+		       /**/
+		       (r_counter == 39) ? 12:
+		       /**/
+		       (r_counter == 40) ? 14:
+		       /**/
+		       (r_counter == 41) ? 15:
+		       /**/
+		       (r_counter == 42) ? 12:
+		       /**/
+		       (r_counter == 43) ? 13:
+		       /**/
+		       (r_counter == 44) ? 15:
+		       /**/
+		       (r_counter == 45) ? 12:
+		       /**/
+		       (r_counter == 46) ? 13:
+		       /**/
+		       (r_counter == 47) ? 14:
+		       /**/
+		       (r_counter == 48) ? 17:
+		       /**/
+		       (r_counter == 49) ? 18:
+		       /**/
+		       (r_counter == 50) ? 19:
+		       /**/
+		       (r_counter == 51) ? 16:
+		       /**/
+		       (r_counter == 52) ? 18:
+		       /**/
+		       (r_counter == 53) ? 19:
+		       /**/
+		       (r_counter == 54) ? 16:
+		       /**/
+		       (r_counter == 55) ? 17:
+		       /**/
+		       (r_counter == 56) ? 19:
+		       /**/
+		       (r_counter == 57) ? 16:
+		       /**/
+		       (r_counter == 58) ? 17:
+		       /**/
+		       (r_counter == 59) ? 18:
+		       /**/
+		       (r_counter == 60) ? 21:
+		       /**/
+		       (r_counter == 61) ? 22:
+		       /**/
+		       (r_counter == 62) ? 23:
+		       /**/
+		       (r_counter == 63) ? 20:
+		       /**/
+		       (r_counter == 64) ? 22:
+		       /**/
+		       (r_counter == 65) ? 23:
+		       /**/
+		       (r_counter == 66) ? 20:
+		       /**/
+		       (r_counter == 67) ? 21:
+		       /**/
+		       (r_counter == 68) ? 23:
+		       /**/
+		       (r_counter == 69) ? 20:
+		       /**/
+		       (r_counter == 70) ? 21:
+		       /**/
+		       (r_counter == 71) ? 22:
+		       /**/
+		       (r_counter == 72) ? 25:
+		       /**/
+		       (r_counter == 73) ? 26:
+		       /**/
+		       (r_counter == 74) ? 27:
+		       /**/
+		       (r_counter == 75) ? 24:
+		       /**/
+		       (r_counter == 76) ? 26:
+		       /**/
+		       (r_counter == 77) ? 27:
+		       /**/
+		       (r_counter == 78) ? 24:
+		       /**/
+		       (r_counter == 79) ? 25:
+		       /**/
+		       (r_counter == 80) ? 27:
+		       /**/
+		       (r_counter == 81) ? 24:
+		       /**/
+		       (r_counter == 82) ? 25:
+		       /**/
+		       (r_counter == 83) ? 26:
+		       /**/
+		       (r_counter == 84) ? 29:
+		       /**/
+		       (r_counter == 85) ? 30:
+		       /**/
+		       (r_counter == 86) ? 31:
+		       /**/
+		       (r_counter == 87) ? 28:
+		       /**/
+		       (r_counter == 88) ? 30:
+		       /**/
+		       (r_counter == 89) ? 31:
+		       /**/
+		       (r_counter == 90) ? 28:
+		       /**/
+		       (r_counter == 91) ? 29:
+		       /**/
+		       (r_counter == 92) ? 31:
+		       /**/
+		       (r_counter == 93) ? 28:
+		       /**/
+		       (r_counter == 94) ? 29:
+		       /**/
+		       (r_counter == 95) ? 30:
+		       /**/
+		       (r_counter == 96) ? 33:
+		       /**/
+		       (r_counter == 97) ? 34:
+		       /**/
+		       (r_counter == 98) ? 35:
+		       /**/
+		       (r_counter == 99) ? 32:
+		       /**/
+		       (r_counter == 100) ? 34:
+		       /**/
+		       (r_counter == 101) ? 35:
+		       /**/
+		       (r_counter == 102) ? 32:
+		       /**/
+		       (r_counter == 103) ? 33:
+		       /**/
+		       (r_counter == 104) ? 35:
+		       /**/
+		       (r_counter == 105) ? 32:
+		       /**/
+		       (r_counter == 106) ? 33:
+		       /**/
+		       (r_counter == 107) ? 34:
+		       /**/
+		       (r_counter == 108) ? 37:
+		       /**/
+		       (r_counter == 109) ? 38:
+		       /**/
+		       (r_counter == 110) ? 39:
+		       /**/
+		       (r_counter == 111) ? 36:
+		       /**/
+		       (r_counter == 112) ? 38:
+		       /**/
+		       (r_counter == 113) ? 39:
+		       /**/
+		       (r_counter == 114) ? 36:
+		       /**/
+		       (r_counter == 115) ? 37:
+		       /**/
+		       (r_counter == 116) ? 39:
+		       /**/
+		       (r_counter == 117) ? 36:
+		       /**/
+		       (r_counter == 118) ? 37:
+		       /**/
+		       (r_counter == 119) ? 38:
+		       /**/
+		       0;
+   assign i_wdata_beta=(r_state == zStateBetaInit) ? o_rdata_lambda:
+		       (r_state == zStateColumn) ? o_data_test_beta:
+		       0;
+
+   assign o_column_data = 
+			  /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 1 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 2) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 3 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 4) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 5 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 6) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 7 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 8) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 9 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 10) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 11 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 12) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 13 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 14) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 15 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 16) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 17 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 18) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 19 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 20) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 21 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 22) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 23 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 24) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 25 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 26) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 27 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 28) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 29 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 30) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 31 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 32) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 33 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 34) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 35 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 36) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 37 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 38) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 39 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 40) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 41 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 42) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 43 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 44) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 45 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 46) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 47 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 48) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 49 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 50) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 51 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 52) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 53 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 54) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 55 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 56) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 57 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 58) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 59 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 60) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 61 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 62) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 63 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 64) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 65 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 66) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 67 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 68) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 69 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 70) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 71 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 72) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 73 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 74) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 75 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 76) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 77 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 78) ? o_rdata_lambda:
+			  /**/
+				    /**/
+			  /**/
+			  (r_state == zStateColumn) &(r_counter == 79 ) ? o_rdata_alpha:
+				    /**/
+				    /**/
+			  /**/ 
+			  (r_state == zStateColumn) & (r_counter == 80) ? o_rdata_lambda:
+			  /**/
+				    /**/
+				    /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 1 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 2 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 3) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 4 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 5 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 6) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 7 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 8 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 9) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 10 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 11 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 12) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 13 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 14 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 15) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 16 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 17 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 18) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 19 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 20 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 21) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 22 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 23 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 24) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 25 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 26 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 27) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 28 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 29 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 30) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 31 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 32 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 33) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 34 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 35 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 36) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 37 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 38 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 39) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 40 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 41 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 42) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 43 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 44 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 45) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 46 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 47 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 48) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 49 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 50 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 51) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 52 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 53 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 54) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 55 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 56 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 57) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 58 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/
+				    (r_state == zStateEstimate) &(r_counter == 59 ) ? o_rdata_alpha:
+					      /**/
+					      /**/
+				    /**/ 
+				    (r_state == zStateEstimate) & (r_counter == 60) ? o_rdata_lambda:
+				    /**/
+					      /**/
+				    0;
+   
+   
+   
+   //状態遷移
+   always @(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  r_state <= zStateInit;
+	else if (w_trans_lambdainit)
+	  r_state <= zStateLambdaInit;
+	else if (w_trans_betainit)
+	  r_state <= zStateBetaInit;
+	else if(w_trans_row | ((r_state==zStateColumn) & (r_counter == 82) & w_o_val_column))
+	  r_state <= zStateRow;
+	else if(w_trans_estimate)
+	  r_state <= zStateEstimate;
+	else if(w_trans_column)
+	  r_state <= zStateColumn;
+	else
+	  r_state <= r_state;
+     end // always (posedge clk or negedge xrst)
+   
+   //行処理の動作フラグ
+   always@(posedge clk or negedge xrst)
+     begin
+	if (!xrst)
+	  r_i_val_row <= 0;
+	else if (r_i_val_row)
+	  r_i_val_row <= 0;
+	else if (w_trans_row)
+	  r_i_val_row <= 1;
+	else if (r_state == zStateRow & w_o_val_row)
+	  r_i_val_row <= 1;
+	else
+	  r_i_val_row <= r_i_val_row;
+     end // always (posedge clk or negedge xrst)
+   //カウンタ
+   always@(posedge clk or negedge xrst)
+     begin
+	if (!xrst)
+	  r_counter <= 0;
+	else if (r_state == zStateLambdaInit)
+	  begin
+	     if(r_counter == 19)
+	       r_counter <= 0;
+	     else
+	       r_counter <= r_counter+1;
+	  end
+	else if (r_state == zStateBetaInit)
+	  begin
+	     if(r_counter == 40)
+	       r_counter <= 0;
+	     else
+	       r_counter <= r_counter + 1;
+	  end
+	else if (r_state == zStateRow & w_o_val_row)
+	  begin
+	     if (r_counter == 122)
+	       r_counter <= 0;
+	     else
+	       r_counter <= r_counter + 1;
+	  end
+	else if (r_state ==zStateEstimate)
+	  begin
+	     if(r_counter == 61)
+	       r_counter<= 0;
+	     else
+	       r_counter <=r_counter +1;
+	  end
+	else if (r_state == zStateColumn & w_o_val_column)
+	  begin
+	     if (r_counter == 82)
+	       r_counter <=0;
+	     else
+	       r_counter <= r_counter + 1;
+	  end
+	else
+	  r_counter <= r_counter;
+     end // always@ (posedge clk or negedge xrst)
+
+   //行処理の値の初期化
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  i_init_row <= 0;
+	else if (i_init_row == 2 | w_trans_row==1)
+	  i_init_row <=0;
+	else
+	  i_init_row <= i_init_row+1;
+     end
+
+   //列処理の値の初期化
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  i_init_column <= 0;
+	else if ((i_init_column == 1 & r_state == zStateColumn)| w_trans_column==1 | w_trans_estimate==1 | (i_init_column == 2 & r_state== zStateEstimate))
+	  i_init_column <=0;
+	else
+	  i_init_column <= i_init_column+1;
+     end
+
+   //繰り返し回数の更新
+   always@(posedge clk or negedge xrst)
+     begin
+	if(!xrst)
+	  r_loop <= 0;
+	else if (w_trans_column)
+	  r_loop <=r_loop+1;
+	else
+	  r_loop <= r_loop;
+     end
+
+ 
+   row row(
+	   .i_data (o_rdata_beta[15:0]),
+	   .i_val (i_val),
+	   .o_data (o_data_test_alpha[15:0]),
+	   .o_val (w_o_val_row),
+	   .clk (clk),
+	   .xrst (xrst),
+	   .i_init (i_init_row [2:0])
+	   );
+   add add(
+	   .i_data (o_column_data[15:0]),
+	   .i_val (i_val),
+	   .o_data (o_data_test_beta[15:0]),
+	   .o_val (w_o_val_column),
+	   .clk (clk),
+	   .xrst (xrst),
+	   .i_init (i_init_column[2:0])
+	   );
+
+   
+
+   sram_lambda sramlambda(
+	     .clk(clk),
+	     .i_wen(i_wen_lambda),
+	     .i_waddr(i_waddr_lambda[7:0]),
+	     .i_raddr(i_raddr_lambda[7:0]),
+	     .i_wdata(i_wdata_lambda[15:0]),
+	     .o_rdata(o_rdata_lambda[15:0])
+	     );
+   sram sramalpha(
+	     .clk(clk),
+	     .i_wen(i_wen_alpha),
+	     .i_waddr(i_waddr_alpha[7:0]),
+	     .i_raddr(i_raddr_alpha[7:0]),
+	     .i_wdata(i_wdata_alpha[15:0]),
+	     .o_rdata(o_rdata_alpha[15:0])
+	     );
+   sram srambeta(
+	     .clk(clk),
+	     .i_wen(i_wen_beta),
+	     .i_waddr(i_waddr_beta[7:0]),
+	     .i_raddr(i_raddr_beta[7:0]),
+	     .i_wdata(i_wdata_beta[15:0]),
+	     .o_rdata(o_rdata_beta[15:0])
+	     );
+   
+   
+   
+endmodule
+   
+	   
+   
+   
+   
+
+   

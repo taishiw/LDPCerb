@@ -9,6 +9,8 @@ read_verilog {
 Ctrl.v
 row.v
 add.v
+sram.v
+sram_lambda.v
 }
 # 複数のファイルを読み込む場合は
 # read_verilog {
